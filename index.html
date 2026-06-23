@@ -1,0 +1,724 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Topical Meter</title>
+<style>
+:root{
+  /* ==== SURFACES — elevation 5 niveaux quasi-isoluminants ==== */
+  --bg-app:#0a0e15; --bg-rail:#0d1019; --bg-surface:#101620; --bg-surface-2:#141b27;
+  --bg-surface-3:#1a2230; --bg-inset:#0c1017;
+  /* ==== BORDURES ==== */
+  --bd-subtle:rgba(255,255,255,.06); --bd:rgba(255,255,255,.09);
+  --bd-strong:rgba(255,255,255,.14); --bd-accent:rgba(252,208,0,.45);
+  /* ==== TEXTE ==== */
+  --tx:#eef2f8; --tx-2:#9aa7b8; --tx-3:#83909f; --tx-disabled:#4a5568;
+  /* ==== ACCENT — jaune marque DOSÉ (logo, nav active, focus, boutons, SCORE TA GLOBAL) ==== */
+  --accent:#fcd000; --accent-hover:#ffd927; --accent-press:#e5bd00;
+  --accent-soft:rgba(252,208,0,.12); --accent-soft-bd:rgba(252,208,0,.30);
+  --on-accent:#0b0f16; --accent-wash:rgba(252,208,0,.10);
+  /* ==== SEMANTIQUE = 6 BANDES TA — VERROUILLEES sur topical_meter.py BANDS ==== */
+  --band-absent:#e8554e;    --band-absent-soft:rgba(232,85,78,.14);
+  --band-faible:#ff6b3d;    --band-faible-soft:rgba(255,107,61,.14);
+  --band-emergent:#ff9d00;  --band-emergent-soft:rgba(255,157,0,.14);
+  --band-credible:#fcd000;  --band-credible-soft:rgba(252,208,0,.14);
+  --band-autorite:#57b87a;  --band-autorite-soft:rgba(87,184,122,.14);
+  --band-reference:#2f9e6e; --band-reference-soft:rgba(47,158,110,.14);
+  --ok:#57b87a;     --ok-soft:rgba(87,184,122,.12);
+  --warn:#ff9d00;   --warn-soft:rgba(255,157,0,.12);
+  --danger:#e8554e; --danger-soft:rgba(232,85,78,.12);
+  --info:#5b9bd5;   --info-soft:rgba(91,155,213,.12);
+  /* ==== CATEGORIES GRAPHE — VERROUILLEES sur server.py CC{} ==== */
+  --cat-pillar:#fcd000;   --cat-collection:#ff9d00; --cat-article:#5b9bd5;
+  --cat-product:#57b87a;  --cat-home:#e8554e;       --cat-blog:#9b8cce; --cat-other:#6b7a8d;
+  /* ==== ESPACEMENTS ==== */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s8:32px; --s10:40px;
+  /* ==== RAYONS ==== */
+  --r-sm:8px; --r-md:10px; --r-lg:14px; --r-xl:18px; --r-pill:999px;
+  /* ==== OMBRES ==== */
+  --sh-1:0 1px 2px rgba(0,0,0,.4); --sh-2:0 4px 16px rgba(0,0,0,.45);
+  --sh-pop:0 12px 32px rgba(0,0,0,.55);
+  --ring:0 0 0 3px rgba(252,208,0,.28); --ring-info:0 0 0 3px rgba(91,155,213,.30);
+  /* ==== TYPO ==== */
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,system-ui,sans-serif;
+  --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+  --fz-display:30px; --fz-h1:20px; --fz-verdict:18px; --fz-h2:15px;
+  --fz-body:13px; --fz-sm:12px; --fz-xs:11px; --fz-mc:10px;
+  --fw-r:400; --fw-m:600;
+  --lh:1.55; --lh-tight:1.35; --ls-tight:-.3px; --ls-cap:.6px; --ls-eyebrow:1.4px;
+  /* ==== TRANSITIONS ==== */
+  --t-fast:120ms cubic-bezier(.4,0,.2,1); --t:180ms cubic-bezier(.4,0,.2,1);
+  --t-slow:600ms cubic-bezier(.22,.61,.36,1);
+  /* ==== LAYOUT ==== */
+  --rail-w:212px; --rail-w-collapsed:64px; --topbar-h:56px; --content-max:1560px; --gap:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--font);background:var(--bg-app);color:var(--tx);
+  font-size:var(--fz-body);line-height:var(--lh);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  font-feature-settings:"tnum","cv05"}
+h1,h2,h3{font-weight:var(--fw-m);letter-spacing:var(--ls-tight);color:var(--tx);line-height:var(--lh-tight)}
+.num,.kpi__value,.bar__val,td.n,.mono{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono);font-size:var(--fz-xs);color:var(--tx-3)}
+.eyebrow{font-size:var(--fz-mc);letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--tx-3);font-weight:var(--fw-m)}
+.cap{font-size:var(--fz-mc);letter-spacing:var(--ls-cap);text-transform:uppercase;color:var(--tx-3)}
+::selection{background:var(--accent-soft);color:var(--tx)}
+:focus-visible{outline:none;box-shadow:var(--ring);border-radius:var(--r-sm)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--bd-strong);border-radius:var(--r-pill);border:3px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.22)}
+::-webkit-scrollbar-track{background:transparent}
+
+/* 1. SHELL */
+.app{display:grid;grid-template-columns:var(--rail-w) 1fr;min-height:100vh}
+.app.rail-collapsed{grid-template-columns:var(--rail-w-collapsed) 1fr}
+.rail{position:sticky;top:0;align-self:start;height:100vh;background:var(--bg-rail);
+  border-right:1px solid var(--bd-subtle);display:flex;flex-direction:column;gap:var(--s5);
+  padding:var(--s4) var(--s3);overflow-y:auto}
+.rail__brand{display:flex;align-items:center;gap:var(--s2);padding:var(--s1) var(--s2)}
+.rail__logo{width:28px;height:28px;border-radius:var(--r-sm);background:var(--accent);
+  display:flex;align-items:center;justify-content:center;color:var(--on-accent);font-size:16px;flex-shrink:0}
+.rail__brand b{font-weight:var(--fw-m);font-size:14px;letter-spacing:var(--ls-tight)}
+.rail__brand b span{color:var(--accent)}
+.rail__pos{position:relative}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav__group{font-size:var(--fz-mc);letter-spacing:var(--ls-cap);text-transform:uppercase;color:var(--tx-3);padding:var(--s3) var(--s2) var(--s1)}
+.nav__item{display:flex;align-items:center;gap:var(--s3);padding:8px 10px;border-radius:var(--r-sm);
+  color:var(--tx-2);font-size:var(--fz-body);text-decoration:none;cursor:pointer;
+  border-left:2px solid transparent;transition:background var(--t-fast),color var(--t-fast)}
+.nav__item i{font-size:16px;width:18px;text-align:center;flex-shrink:0}
+.nav__item:hover{background:var(--bg-surface-2);color:var(--tx)}
+.nav__item.is-active{background:var(--accent-soft);color:var(--accent);border-left-color:var(--accent);font-weight:var(--fw-m)}
+.nav__badge{margin-left:auto;background:var(--warn-soft);color:var(--warn);font-size:var(--fz-mc);
+  font-weight:var(--fw-m);padding:1px 7px;border-radius:var(--r-pill);font-variant-numeric:tabular-nums}
+.topbar{position:sticky;top:0;z-index:30;height:var(--topbar-h);
+  background:color-mix(in srgb,var(--bg-rail) 86%,transparent);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--bd-subtle);display:flex;align-items:center;
+  justify-content:space-between;padding:0 var(--s5);gap:var(--s4)}
+.topbar.is-scrolled{box-shadow:var(--sh-2)}
+.topbar__l{display:flex;align-items:center;gap:var(--s3);min-width:0}
+.topbar__titles{min-width:0}
+.topbar__title{font-size:var(--fz-h2);font-weight:var(--fw-m);letter-spacing:var(--ls-tight);white-space:nowrap}
+.topbar__sub{font-size:var(--fz-sm);color:var(--tx-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar__r{display:flex;align-items:center;gap:var(--s2)}
+.topbar__burger{display:none;width:34px;height:34px;align-items:center;justify-content:center;
+  border:1px solid var(--bd);border-radius:var(--r-sm);background:var(--bg-surface-2);color:var(--tx-2);cursor:pointer}
+.main{padding:var(--s5);max-width:var(--content-max);width:100%;margin:0 auto}
+
+/* 2. SELECTEUR BOUTIQUE */
+.store-select{background:var(--bg-surface-2);border:1px solid var(--bd);border-radius:var(--r-md);
+  padding:8px 10px;display:flex;align-items:center;gap:var(--s2);cursor:pointer;width:100%;
+  transition:border-color var(--t-fast),background var(--t-fast)}
+.store-select:hover{border-color:var(--bd-strong);background:var(--bg-surface-3)}
+.store-select__dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex-shrink:0}
+.store-select__dot.off{background:var(--tx-3)}
+.store-select__name{font-size:var(--fz-body);color:var(--tx);font-weight:var(--fw-m);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.store-select__chev{color:var(--tx-3);font-size:15px;transition:transform var(--t)}
+.store-select[aria-expanded="true"] .store-select__chev{transform:rotate(180deg)}
+.store-menu{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--bg-surface-3);
+  border:1px solid var(--bd);border-radius:var(--r-lg);box-shadow:var(--sh-pop);padding:6px;z-index:70}
+.store-menu[hidden]{display:none}
+.store-menu__row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r-sm);
+  cursor:pointer;min-height:44px;transition:background var(--t-fast)}
+.store-menu__row:hover{background:var(--bg-surface-2)}
+.store-menu__row.active{background:var(--accent-wash);box-shadow:inset 2px 0 0 var(--accent)}
+.store-menu__dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex-shrink:0}
+.store-menu__dot.off{background:var(--tx-3)}
+.store-menu__dom{flex:1;font-weight:var(--fw-m);font-size:var(--fz-body);color:var(--tx)}
+.store-menu__mini{font-size:var(--fz-sm);color:var(--tx-2);font-variant-numeric:tabular-nums}
+.store-menu__chip{font-size:var(--fz-mc);padding:2px 7px;border-radius:var(--r-pill);background:var(--bg-surface);color:var(--tx-3)}
+
+/* 3. PATRON EDITORIAL */
+.sec-head{display:flex;flex-direction:column;gap:2px;margin-bottom:4px}
+.sec-head h2{font-size:var(--fz-h1);font-weight:var(--fw-m);color:var(--tx);letter-spacing:var(--ls-tight)}
+.lede{font-size:var(--fz-sm);color:var(--tx-3);line-height:1.5;margin-bottom:var(--s4);max-width:74ch}
+
+/* 4. CARTE + GRILLE 12 */
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--gap)}
+.span-3{grid-column:span 3}.span-4{grid-column:span 4}.span-5{grid-column:span 5}
+.span-6{grid-column:span 6}.span-7{grid-column:span 7}.span-8{grid-column:span 8}.span-12{grid-column:span 12}
+.card{background:var(--bg-surface);border:1px solid var(--bd-subtle);border-radius:var(--r-lg);
+  padding:var(--s4);box-shadow:var(--sh-1);transition:border-color var(--t),box-shadow var(--t)}
+.card:hover{border-color:var(--bd);box-shadow:var(--sh-2)}
+.card--flush{padding:0;overflow:hidden}
+.card--feature{border-color:var(--bd-accent);box-shadow:0 0 0 1px var(--bd-accent),var(--sh-2)}
+.card__head{display:flex;align-items:center;justify-content:space-between;padding:11px var(--s4);border-bottom:1px solid var(--bd-subtle)}
+.card__title{font-size:var(--fz-h2);font-weight:var(--fw-m);display:flex;align-items:center;gap:8px}
+.card__title i{color:var(--accent);font-size:16px}
+.card__meta{font-size:var(--fz-sm);color:var(--tx-3);font-variant-numeric:tabular-nums}
+.card__body{padding:var(--s4)}
+
+/* 5. HERO + JAUGE SVG */
+.hero-grid{display:grid;grid-template-columns:auto 1fr;gap:var(--s6);background:var(--bg-surface);
+  border:1px solid var(--bd-subtle);border-radius:var(--r-xl);padding:var(--s5);box-shadow:var(--sh-1)}
+.hero-gauges{display:flex;gap:var(--s4);align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.gauge__sub{font-size:var(--fz-mc);color:var(--tx-3);text-align:center;max-width:120px;line-height:1.3;margin-top:2px}
+.gauge{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s2)}
+.gauge svg .gtrack{stroke:var(--bg-inset)}
+.gauge svg .gfill{transition:stroke-dashoffset var(--t-slow)}
+.gauge__band{font-weight:var(--fw-m);font-size:var(--fz-h2)}
+.gauge__lbl{font-size:var(--fz-sm);color:var(--tx-3)}
+.verdict{font-size:var(--fz-verdict);font-weight:var(--fw-m);line-height:var(--lh-tight);letter-spacing:var(--ls-tight);margin-bottom:8px;color:var(--tx)}
+.verdict em{font-style:normal}
+.verdict__expl{font-size:var(--fz-body);line-height:1.65;color:var(--tx-2)}
+.verdict__stats{display:flex;gap:18px;margin-top:14px;flex-wrap:wrap;align-items:center}
+.verdict__stats b{font-size:18px;font-weight:var(--fw-m);color:var(--tx);font-variant-numeric:tabular-nums}
+.verdict__stats .s{font-size:var(--fz-sm);color:var(--tx-3);display:flex;align-items:center;gap:5px}
+
+/* 6. RUBAN 6 BANDES */
+.bandscale{display:flex;position:relative;border-radius:var(--r-md);overflow:hidden;border:1px solid var(--bd-subtle);margin-bottom:var(--s6)}
+.bandscale .seg{padding:7px 6px;text-align:center;min-width:0;overflow:hidden}
+.scale-lbl{font-size:var(--fz-mc);letter-spacing:var(--ls-cap);text-transform:uppercase;color:var(--tx-3);font-weight:var(--fw-m);margin:4px 0 4px}
+.bandscale .seg .rng{font-size:var(--fz-mc);font-weight:var(--fw-m)}
+.bandscale .seg .nm{font-size:var(--fz-mc);display:block;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.seg.b-absent{flex:0 0 11%;background:var(--band-absent);color:#3a0f0c}
+.seg.b-faible{flex:0 0 18%;background:var(--band-faible);color:#3d1505}
+.seg.b-emergent{flex:0 0 20%;background:var(--band-emergent);color:#3d2500}
+.seg.b-credible{flex:0 0 20%;background:var(--band-credible);color:#3a3000}
+.seg.b-autorite{flex:0 0 16%;background:var(--band-autorite);color:#0c3422}
+.seg.b-reference{flex:0 0 15%;background:var(--band-reference);color:#08291c}
+.bandscale .cursor{position:absolute;top:-2px;bottom:-2px;width:2px;background:#fff;box-shadow:0 0 6px #fff;z-index:2}
+
+/* 7. TUILES KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--s3)}
+.kpi{position:relative;overflow:hidden;background:var(--bg-surface);border:1px solid var(--bd-subtle);border-radius:var(--r-md);padding:14px 15px}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--tx-3)}
+.kpi.is-ok::before{background:var(--ok)}.kpi.is-ok .kpi__value{color:var(--ok)}
+.kpi.is-warn::before{background:var(--warn)}.kpi.is-warn .kpi__value{color:var(--warn)}
+.kpi.is-danger::before{background:var(--danger)}.kpi.is-danger .kpi__value{color:var(--danger)}
+.kpi.is-info::before{background:var(--info)}.kpi.is-info .kpi__value{color:var(--info)}
+.kpi.is-accent::before{background:var(--accent)}.kpi.is-accent .kpi__value{color:var(--accent)}
+.kpi__label{font-size:var(--fz-sm);color:var(--tx-3);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.kpi__value{font-size:23px;font-weight:var(--fw-m);color:var(--tx);letter-spacing:var(--ls-tight);font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi__sub{font-size:var(--fz-sm);color:var(--tx-3);margin-top:5px;line-height:1.4}
+.kpi__delta{font-size:var(--fz-sm);margin-top:4px;display:inline-flex;align-items:center;gap:3px}
+.kpi__delta.up{color:var(--ok)}.kpi__delta.down{color:var(--danger)}.kpi__delta.flat{color:var(--tx-3)}
+
+/* 8. BARRES SILO */
+.bars{display:flex;flex-direction:column;gap:var(--s4)}
+.bar__top{display:flex;justify-content:space-between;align-items:baseline;font-size:var(--fz-body);color:var(--tx-2);margin-bottom:6px;gap:8px}
+.bar__name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx)}
+.bar__name .mono{margin-left:6px}
+.bar__val{display:flex;align-items:baseline;gap:8px;flex-shrink:0}
+.bar__num{font-weight:var(--fw-m);font-variant-numeric:tabular-nums}
+.bar__track{height:8px;background:var(--bg-inset);border-radius:var(--r-pill);overflow:hidden}
+.bar__fill{height:100%;border-radius:var(--r-pill);transition:width var(--t-slow)}
+
+/* 9. BADGE / STATUT / CATPILL */
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:var(--fz-sm);font-weight:var(--fw-m);padding:3px 10px;border-radius:var(--r-pill);line-height:1.4}
+.badge--absent{background:var(--band-absent-soft);color:var(--band-absent)}
+.badge--faible{background:var(--band-faible-soft);color:var(--band-faible)}
+.badge--emergent{background:var(--band-emergent-soft);color:var(--band-emergent)}
+.badge--credible{background:var(--band-credible-soft);color:var(--band-credible)}
+.badge--autorite{background:var(--band-autorite-soft);color:var(--band-autorite)}
+.badge--reference{background:var(--band-reference-soft);color:var(--band-reference)}
+.badge--ok{background:var(--ok-soft);color:var(--ok)}.badge--warn{background:var(--warn-soft);color:var(--warn)}
+.badge--danger{background:var(--danger-soft);color:var(--danger)}.badge--info{background:var(--info-soft);color:var(--info)}
+.pillband{font-size:var(--fz-mc);padding:1px 8px;border-radius:var(--r-pill);color:var(--on-accent);font-weight:var(--fw-m)}
+.catpill{font-size:var(--fz-mc);padding:2px 8px;border-radius:var(--r-pill);font-weight:var(--fw-m);color:var(--on-accent)}
+.catpill.pillar_page{background:var(--cat-pillar)}.catpill.collection{background:var(--cat-collection)}
+.catpill.article{background:var(--cat-article)}.catpill.product{background:var(--cat-product)}
+.catpill.homepage{background:var(--cat-home)}.catpill.blog_index{background:var(--cat-blog)}.catpill.other{background:var(--cat-other)}
+.status-dot{display:inline-flex;align-items:center;gap:6px;font-size:var(--fz-sm);color:var(--ok);font-weight:var(--fw-m);background:var(--ok-soft);padding:4px 11px;border-radius:var(--r-pill)}
+.status-dot::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.status-dot.off{color:var(--tx-3);background:var(--bg-surface-2)}.status-dot.off::before{background:var(--tx-3)}
+.flag{font-size:var(--fz-mc);padding:1px 7px;border-radius:8px;background:var(--danger-soft);color:var(--danger);font-weight:var(--fw-m)}
+.ok-txt{color:var(--ok);font-weight:var(--fw-m)}.warn-txt{color:var(--warn);font-weight:var(--fw-m)}
+
+/* 10. TABLEAU */
+.table-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:var(--fz-body)}
+.tbl thead th{text-align:left;font-size:var(--fz-mc);letter-spacing:var(--ls-cap);text-transform:uppercase;
+  color:var(--tx-3);font-weight:var(--fw-m);padding:9px var(--s3);border-bottom:1px solid var(--bd-subtle);
+  position:sticky;top:0;background:var(--bg-surface);white-space:nowrap;z-index:1}
+.tbl thead th.n{text-align:right}
+.tbl thead th.sortable{cursor:pointer;user-select:none}
+.tbl thead th.sortable .caret{opacity:.5;font-size:11px;margin-left:3px}
+.tbl thead th.sortable.is-sorted{color:var(--accent)}.tbl thead th.sortable.is-sorted .caret{opacity:1}
+.tbl tbody td{padding:11px var(--s3);border-bottom:1px solid var(--bd-subtle);color:var(--tx-2);vertical-align:middle}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tbody tr{transition:background var(--t-fast)}
+.tbl tbody tr:hover{background:var(--bg-surface-2)}
+.tbl td.n,.tbl th.n{text-align:right;font-variant-numeric:tabular-nums;color:var(--tx)}
+.tbl .lead{color:var(--tx);font-weight:var(--fw-m)}
+.tbl .hi{color:var(--accent);font-weight:var(--fw-m)}
+.tbl tbody tr.is-active td{background:var(--accent-wash)}
+.dense .tbl thead th{padding:6px var(--s2)}.dense .tbl tbody td{padding:7px var(--s2)}
+.prio{font-weight:var(--fw-m)}.prio.p1{color:var(--band-absent)}.prio.p2{color:var(--band-emergent)}.prio.p3{color:var(--accent)}
+
+/* 11. BOUTONS */
+.btn{display:inline-flex;align-items:center;gap:7px;font-family:inherit;font-size:var(--fz-body);
+  font-weight:var(--fw-m);padding:8px 14px;border-radius:var(--r-sm);border:1px solid var(--bd);
+  background:var(--bg-surface-2);color:var(--tx);cursor:pointer;transition:all var(--t-fast)}
+.btn i{font-size:16px}
+.btn:hover{background:var(--bg-surface-3);border-color:var(--bd-strong)}
+.btn:active{transform:scale(.98)}
+.btn:focus-visible{box-shadow:var(--ring-info)}
+.btn--primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn--primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn--primary:active{background:var(--accent-press)}
+.btn--primary:focus-visible{box-shadow:var(--ring)}
+.btn--ghost{background:transparent;border-color:transparent;color:var(--tx-2)}
+.btn--ghost:hover{background:var(--bg-surface-2);color:var(--tx)}
+.btn--sm{padding:5px 10px;font-size:var(--fz-sm)}
+.btn-icon{width:34px;height:34px;padding:0;justify-content:center}
+.gscbtn{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.gscbtn button{font-family:inherit;font-size:var(--fz-sm);font-weight:var(--fw-m);color:var(--tx-2);
+  background:var(--bg-surface-2);border:1px solid var(--bd);padding:6px 12px;border-radius:var(--r-sm);cursor:pointer;transition:all var(--t-fast)}
+.gscbtn button:hover{color:var(--tx);border-color:var(--bd-strong)}
+.gscbtn button.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.gscbtn button:focus-visible{box-shadow:var(--ring-info)}
+.silo-overlay__close:hover{color:var(--tx)}.silo-overlay__close:focus-visible,.copy-mini:focus-visible{box-shadow:var(--ring)}
+.dlbtn{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:var(--on-accent);
+  font-weight:var(--fw-m);font-size:var(--fz-sm);padding:8px 14px;border-radius:var(--r-sm);text-decoration:none}
+.dlbtn:hover{background:var(--accent-hover)}
+
+/* 12. CHAMP / SEGMENTED */
+.field{display:flex;align-items:center;gap:8px;background:var(--bg-surface-2);border:1px solid var(--bd);
+  border-radius:var(--r-sm);padding:8px 11px;transition:border-color var(--t-fast),box-shadow var(--t-fast)}
+.field i{color:var(--tx-3);font-size:15px}
+.field:focus-within{border-color:var(--bd-accent);box-shadow:var(--ring-info)}
+.field input{flex:1;background:none;border:none;outline:none;color:var(--tx);font-family:inherit;font-size:var(--fz-body);min-width:80px}
+.field input::placeholder{color:var(--tx-3)}
+.segmented{display:inline-flex;gap:2px;background:var(--bg-inset);border:1px solid var(--bd-subtle);border-radius:var(--r-md);padding:3px}
+.segmented button{font-family:inherit;font-size:var(--fz-sm);font-weight:var(--fw-m);color:var(--tx-2);
+  background:none;border:none;padding:6px 13px;border-radius:7px;cursor:pointer;transition:all var(--t-fast)}
+.segmented button:hover{color:var(--tx)}
+.segmented button.is-active{background:var(--bg-surface);color:var(--tx);box-shadow:var(--sh-1)}
+
+
+/* 14. ARCHITECTE / CALLOUTS / SILO / GLOSSAIRE / METHODO / VIDE */
+.silo-block{background:var(--bg-surface);border:1px solid var(--bd-subtle);border-radius:var(--r-lg);padding:var(--s4);margin-bottom:10px}
+.silo-block h3{font-size:var(--fz-h2);font-weight:var(--fw-m);color:var(--tx);margin-bottom:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nextact{font-size:var(--fz-body);color:var(--tx);background:var(--accent-soft);border-left:3px solid var(--accent);
+  border-radius:0 var(--r-sm) var(--r-sm) 0;padding:9px 12px;margin:8px 0;line-height:1.45}
+.archi-grp{margin:10px 0 4px}.archi-h{font-size:var(--fz-sm);font-weight:var(--fw-m);color:var(--tx-3);margin-bottom:4px}
+.miss{font-size:var(--fz-sm);padding:6px 0;border-bottom:1px solid var(--bd-subtle);display:flex;gap:8px;align-items:center;color:var(--tx-2)}
+.miss .anchor{color:var(--band-reference)}
+.callout{display:flex;gap:var(--s3);padding:var(--s4);border-radius:var(--r-lg);border:1px solid var(--bd-subtle);background:var(--bg-surface)}
+.callout__icon{width:34px;height:34px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+.callout--warn{border-color:var(--warn-soft)}.callout--warn .callout__icon{background:var(--warn-soft);color:var(--warn)}
+.callout--danger .callout__icon{background:var(--danger-soft);color:var(--danger)}
+.callout--ok .callout__icon{background:var(--ok-soft);color:var(--ok)}
+.callout--info .callout__icon{background:var(--info-soft);color:var(--info)}
+.callout__title{font-size:var(--fz-h2);font-weight:var(--fw-m);margin-bottom:3px}
+.callout__body{font-size:var(--fz-body);color:var(--tx-2);line-height:1.6}
+.glo{background:var(--bg-surface);border:1px solid var(--bd-subtle);border-radius:var(--r-lg);padding:var(--s4);margin-bottom:9px}
+.glo h3{font-size:var(--fz-h2);font-weight:var(--fw-m);color:var(--accent);margin-bottom:5px}
+.glo .q{font-size:var(--fz-body);color:var(--tx);line-height:1.55}
+.glo .w{font-size:var(--fz-sm);color:var(--tx-2);margin-top:6px;line-height:1.55;padding-left:10px;border-left:2px solid var(--bd-strong)}
+.empty{color:var(--tx-3);padding:38px;text-align:center;font-style:italic;background:var(--bg-surface);border:1px dashed var(--bd);border-radius:var(--r-lg)}
+/* METHODOLOGIE — fiches pedagogiques */
+.method{background:var(--bg-surface);border:1px solid var(--bd-subtle);border-radius:var(--r-xl);padding:var(--s6);margin-bottom:var(--s5)}
+.method__eyebrow{font-size:var(--fz-mc);letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--accent);font-weight:var(--fw-m);margin-bottom:6px}
+.method h2{font-size:var(--fz-h1);font-weight:var(--fw-m);color:var(--tx);margin-bottom:4px}
+.method__sub{font-size:var(--fz-sm);color:var(--tx-3);margin-bottom:var(--s4)}
+.method p{font-size:var(--fz-body);color:var(--tx-2);line-height:1.7;margin-bottom:var(--s3);max-width:78ch}
+.method p b,.method p strong{color:var(--tx);font-weight:var(--fw-m)}
+.method h3{font-size:var(--fz-h2);font-weight:var(--fw-m);color:var(--tx);margin:var(--s5) 0 var(--s2)}
+.method__steps{counter-reset:step;list-style:none;display:flex;flex-direction:column;gap:var(--s2);margin:var(--s3) 0}
+.method__steps li{position:relative;padding:11px 14px 11px 46px;background:var(--bg-surface-2);border:1px solid var(--bd-subtle);
+  border-radius:var(--r-md);font-size:var(--fz-body);color:var(--tx-2);line-height:1.6}
+.method__steps li::before{counter-increment:step;content:counter(step);position:absolute;left:12px;top:11px;
+  width:22px;height:22px;border-radius:var(--r-sm);background:var(--accent-soft);color:var(--accent);
+  font-size:var(--fz-sm);font-weight:var(--fw-m);display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.method__nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--s2);margin:var(--s3) 0}
+.method__num{background:var(--bg-inset);border:1px solid var(--bd-subtle);border-radius:var(--r-md);padding:12px 14px}
+.method__num b{display:block;font-size:18px;font-weight:var(--fw-m);color:var(--accent);font-variant-numeric:tabular-nums;margin-bottom:3px}
+.method__num span{font-size:var(--fz-sm);color:var(--tx-3);line-height:1.45}
+.method__fields{font-size:var(--fz-body)}
+.method__fields dt{color:var(--tx);font-weight:var(--fw-m);font-family:var(--mono);font-size:var(--fz-sm);margin-top:var(--s3)}
+.method__fields dd{color:var(--tx-2);line-height:1.6;margin:3px 0 0;padding-left:0}
+.method__toc{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:var(--s5)}
+.method__toc a{font-size:var(--fz-sm);color:var(--tx-2);background:var(--bg-surface-2);border:1px solid var(--bd);
+  border-radius:var(--r-pill);padding:6px 13px;text-decoration:none;transition:all var(--t-fast)}
+.method__toc a:hover{color:var(--accent);border-color:var(--accent-soft-bd)}
+
+/* 14b. SANTÉ DES SILOS (cartes-diagnostic de maillage) */
+.silos-toolbar{display:flex;gap:6px;margin-bottom:var(--s4);flex-wrap:wrap}
+.silos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));gap:var(--gap)}
+.silo-card{background:var(--bg-surface);border:1px solid var(--bd-subtle);border-radius:var(--r-lg);overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--sh-1);transition:border-color var(--t),box-shadow var(--t)}
+.silo-card:hover{border-color:var(--bd);box-shadow:var(--sh-2)}
+.silo-card.is-critical{box-shadow:0 0 0 1px var(--band-absent-soft),var(--sh-1)}
+.silo-card__head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:12px var(--s4);border-left:3px solid var(--tx-3)}
+.silo-card__head.b-absent{border-left-color:var(--band-absent);background:var(--band-absent-soft)}
+.silo-card__head.b-emergent{border-left-color:var(--band-emergent);background:var(--band-emergent-soft)}
+.silo-card__head.b-autorite{border-left-color:var(--band-autorite);background:var(--band-autorite-soft)}
+.silo-card__head>div:first-child{min-width:0;flex:1}
+.silo-card__name{font-size:var(--fz-h2);font-weight:var(--fw-m);color:var(--tx);line-height:1.3;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.silo-card__head .badge{flex-shrink:0}
+.silo-card__body{padding:var(--s4);display:flex;flex-direction:column;gap:var(--s3)}
+.silo-gauge{display:flex;justify-content:center;margin:2px 0}
+.silo-gauge svg{width:100%;max-width:190px;height:auto}
+.silo-nopillar{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--band-absent);font-size:26px;padding:18px 0}.silo-nopillar div{font-size:var(--fz-sm)}
+.silo-gauge text.v{font-weight:600;font-variant-numeric:tabular-nums}
+.silo-gauge text.l{font-size:10px;fill:var(--tx-3)}
+.flux{display:flex;flex-direction:column;gap:6px}
+.flux__row{display:flex;align-items:center;gap:8px}
+.flux__lbl{width:38px;font-size:var(--fz-mc);letter-spacing:.5px;color:var(--tx-3);text-align:right}
+.flux .bar__track{flex:1}
+.flux__hint{font-size:var(--fz-mc);color:var(--tx-3);line-height:1.4}
+.orphans__title{font-size:var(--fz-sm);color:var(--band-absent);font-weight:var(--fw-m);margin-bottom:2px}
+.orphan-pill{display:flex;align-items:center;gap:6px;font-size:var(--fz-sm);background:var(--danger-soft);color:var(--band-absent);padding:4px 9px;border-radius:var(--r-sm);margin-top:4px}
+.orphan-ok{font-size:var(--fz-sm);color:var(--ok)}
+.silo-money{background:var(--accent-wash);border:1px solid var(--accent-soft-bd);border-radius:var(--r-sm);padding:8px 10px;font-size:var(--fz-sm)}
+.silo-money a{color:var(--accent);text-decoration:none}
+.silo-verdict{font-size:var(--fz-sm);color:var(--tx-2);line-height:1.5}
+.garage-pill{display:inline-flex;align-items:center;gap:5px;font-size:var(--fz-sm);background:var(--danger-soft);color:var(--band-absent);border:1px dashed var(--band-absent);padding:4px 10px;border-radius:var(--r-pill);margin:0 6px 6px 0}
+.silo-overlay{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:80vh;overflow-y:auto;background:var(--bg-surface-3);border:1px solid var(--bd);border-radius:var(--r-xl);box-shadow:var(--sh-pop);z-index:65;padding:var(--s5)}
+.silo-overlay[hidden]{display:none}
+.silo-overlay__close{position:absolute;top:12px;right:14px;cursor:pointer;color:var(--tx-3);font-size:20px;background:none;border:none}
+.copy-mini{margin-left:auto;cursor:pointer;background:var(--bg-surface);border:1px solid var(--bd);color:var(--tx-3);border-radius:6px;font-size:var(--fz-mc);padding:1px 7px}
+.copy-mini:hover{color:var(--accent);border-color:var(--accent-soft-bd)}
+/* 15. DRAWER MOBILE + SCRIM */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;opacity:0;pointer-events:none;transition:opacity var(--t)}
+.scrim.is-open{opacity:1;pointer-events:auto}
+
+/* 16. RESPONSIVE */
+@media (max-width:1279px){.span-7,.span-8{grid-column:span 12}.span-5,.span-6{grid-column:span 12}
+  .hero-grid{grid-template-columns:1fr;text-align:center}.hero-gauges{justify-content:center}}
+@media (max-width:1079px){.span-3,.span-4{grid-column:span 6}}
+@media (max-width:859px){
+  .app{grid-template-columns:1fr}
+  .rail{position:fixed;left:0;top:0;z-index:60;width:var(--rail-w);transform:translateX(-100%);
+    transition:transform var(--t);box-shadow:var(--sh-pop)}
+  .rail.is-open{transform:translateX(0)}
+  .topbar__burger{display:inline-flex}
+  .main{padding:var(--s4)}
+  .span-3,.span-4{grid-column:span 12}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .tbl thead th{top:0}
+  .tbl.stack thead{display:none}
+  .tbl.stack tbody tr{display:block;border:1px solid var(--bd-subtle);border-radius:var(--r-md);padding:8px 12px;margin-bottom:10px;background:var(--bg-surface)}
+  .tbl.stack tbody td,.tbl.stack tbody td.col-opt{display:flex;justify-content:space-between;gap:12px;border:none;padding:5px 0}
+  .tbl.stack tbody td::before{content:attr(data-l);color:var(--tx-3);font-size:var(--fz-xs);text-transform:uppercase;letter-spacing:.4px}
+  .tbl.stack tbody tr:hover{background:var(--bg-surface)}
+  .tbl:not(.stack) .col-opt{display:none}
+}
+@media (max-width:479px){
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .topbar__sub{display:none}
+  .gauge svg{width:120px;height:120px}
+  .verdict__stats{justify-content:center}
+  .store-menu{position:fixed;left:0;right:0;bottom:0;top:auto;border-radius:18px 18px 0 0;
+    box-shadow:0 -12px 32px rgba(0,0,0,.55);max-height:80vh;overflow:auto}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.gauge svg .gfill,.bar__fill{transition:none}}
+</style>
+</head><body>
+<div class="scrim" id="scrim"></div>
+<div class="app" id="app">
+  <aside class="rail" id="rail">
+    <div class="rail__brand"><div class="rail__logo">◎</div><b>Topical<span> Meter</span></b></div>
+    <div class="rail__pos">
+      <button class="store-select" id="storeBtn" aria-expanded="false" aria-haspopup="listbox">
+        <span class="store-select__dot" id="storeDot"></span>
+        <span class="store-select__name" id="storeName">…</span>
+        <span class="store-select__chev">▾</span>
+      </button>
+      <div class="store-menu" id="storeMenu" role="listbox" hidden></div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="nav__group">Pilotage</div>
+      <a class="nav__item is-active" data-tab="overview" tabindex="0" role="button"><i>◎</i> Tableau de bord</a>
+      <a class="nav__item" data-tab="ta"><i>▤</i> Score TA</a>
+      <a class="nav__item" data-tab="archi"><i>◈</i> Architecte</a>
+      <a class="nav__item" data-tab="map"><i>⌗</i> Santé des silos<span class="nav__badge" id="badgeSilos" hidden>0</span></a>
+      <div class="nav__group">Diagnostic</div>
+      <a class="nav__item" data-tab="gsc"><i>◐</i> Actions Google</a>
+      <a class="nav__item" data-tab="silogap"><i>＋</i> Articles manquants<span class="nav__badge" id="badgeSilogap" hidden>0</span></a>
+      <a class="nav__item" data-tab="battle"><i>⚑</i> Ordre de bataille</a>
+      <a class="nav__item" data-tab="pr"><i>⤳</i> Fuites de jus</a>
+      <div class="nav__group">Catalogue</div>
+      <a class="nav__item" data-tab="pages"><i>▣</i> Pages puissantes</a>
+      <a class="nav__item" data-tab="collections"><i>▦</i> Collections</a>
+      <div style="margin-top:auto"></div>
+      <a class="nav__item" data-tab="methodo"><i>?</i> Méthodologie</a>
+      <a class="nav__item" data-tab="glossaire"><i>≡</i> Glossaire</a>
+    </nav>
+  </aside>
+  <div>
+    <header class="topbar" id="topbar">
+      <div class="topbar__l">
+        <button class="topbar__burger" id="burger" aria-label="Menu">☰</button>
+        <div class="topbar__titles">
+          <div class="topbar__title" id="catLabel">Tableau de bord</div>
+          <div class="topbar__sub" id="catSub">…</div>
+        </div>
+      </div>
+      <div class="topbar__r">
+        <span class="status-dot off" id="gscStatus">…</span>
+        <div class="segmented" id="densityToggle" title="Densité">
+          <button data-density="comfort" class="is-active">Confort</button>
+          <button data-density="compact">Compact</button>
+        </div>
+        <a class="dlbtn" id="dlCrawl" href="#" download><i>⤓</i> Crawl JSON</a>
+      </div>
+    </header>
+    <main class="main" id="main">
+      <div class="sec-head"><span class="eyebrow" id="secEyebrow">Le verdict</span><h2 id="secTitle">Tableau de bord</h2></div>
+      <p class="lede" id="secLede">…</p>
+      <div class="grid" id="panel"></div>
+    </main>
+  </div>
+</div>
+<script>
+/* ===================== ÉTAT & CONSTANTES ===================== */
+let DATA=null,STORE=null,STORES=[],TAB='overview',GSCSUB='ctr_leaks';
+const BANDS=[[0,11,'Absent','#e8554e','absent'],[12,29,'Faible','#ff6b3d','faible'],[30,49,'Émergent','#ff9d00','emergent'],[50,69,'Crédible','#fcd000','credible'],[70,85,'Autorité','#57b87a','autorite'],[86,100,'Référence','#2f9e6e','reference']];
+function band(v){let r=BANDS[0];for(const x of BANDS){if(v>=x[0])r=x;}return{nom:r[2],col:r[3],key:r[4]};}
+const STRBANDS=[[0,'Fragile','#e8554e'],[32,'En chantier','#ff9d00'],[48,'Correcte','#fcd000'],[64,'Bien bâtie','#57b87a'],[80,'Solide','#2f9e6e']];
+function structBand(v){let r=STRBANDS[0];for(const x of STRBANDS){if(v>=x[0])r=x;}return{nom:r[1],col:r[2]};}
+function gaugeBlock(score,col,nom,title,sub){const r=56,c=2*Math.PI*r,off=c*(1-score/100);return `<div class="gauge"><svg width="142" height="142" viewBox="0 0 170 170"><circle class="gtrack" cx="85" cy="85" r="${r}" fill="none" stroke-width="13"/><circle class="gfill" cx="85" cy="85" r="${r}" fill="none" stroke="${col}" stroke-width="13" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 85 85)"/><text x="85" y="80" text-anchor="middle" font-size="38" font-weight="600" fill="${col}">${score}</text><text x="85" y="103" text-anchor="middle" font-size="11" fill="var(--tx-3)">/ 100</text></svg><div class="gauge__band" style="color:${col}">${nom}</div><div class="gauge__lbl">${title}</div><div class="gauge__sub">${sub}</div></div>`;}
+function bandKey(name){const m={'Absent':'absent','Faible':'faible','Émergent':'emergent','Crédible':'credible','Autorité':'autorite','Référence':'reference'};return m[name]||'info';}
+const VERDICTS={'Absent':'Google ne te considère pas comme une source sur ce sujet. Tu n\'apparais quasiment jamais.','Faible':'Présence marginale. Google te voit à peine ; il y a tout à construire.','Émergent':'Tu démarres. Google commence à te classer, mais te fait encore peu confiance.','Crédible':'Tu montes. Google te classe souvent en page 1 ; reste à transformer l\'essai en top 3.','Autorité':'Tu es une référence reconnue. Tu rankes haut, régulièrement, sur beaucoup de requêtes.','Référence':'Tu fais autorité. Google te traite comme LA source du sujet. Position dominante.'};
+const CATLBL={pillar_page:'Pilier',collection:'Collection',article:'Article',product:'Produit',homepage:'Accueil',blog_index:'Blog',other:'Autre'};
+function catLabel(c){return CATLBL[c]||c;}
+const TABMETA={
+ overview:['Le verdict','Tableau de bord','Tes 2 scores (domination Google déjà acquise + qualité de construction on-site) et les leviers du moment — résumé en un coup d\'œil, pour un expert comme pour un débutant.'],
+ ta:['L\'autorité par silo','Score de Topical Authority','Chaque silo noté /100 selon ta <b>domination réelle</b> dans Google (données Search Console, <b>90 derniers jours</b>). Sous chaque silo : <b>« 1481 mots-clés en top 3 »</b> = nombre de mots-clés où tu es dans les <b>3 premiers résultats</b> Google (pas des clics, pas des pages — des requêtes où tu es sur le podium) · <b>« pos. moy. 6.3 »</b> = ta position moyenne · <b>« 17 237 clics/90j »</b> = visites Google gratuites <b>sur 90 jours</b>. Recette v3 : 30% top3 + 18% top10 + 12% impressions + 16% clics + 24% position.'],
+ archi:['Le plan d\'action','Architecte de silos','Pour chaque silo : pilier à écrire/enrichir, satellites à créer, satellites à lier au pilier, articles à lier à la collection. <b>Priorité</b> 🔥 haute / 🟠 moyenne / ⚪ faible = là où agir d\'abord (calculée sur ta traction réelle × leviers dispo × valeur commerciale — on ne ressuscite pas un silo mort sans demande).'],
+ pages:['Le catalogue','Pages les plus puissantes','Tes pages classées par force SEO interne (PageRank = le "jus" reçu via tes liens). Télécharge le crawl complet en haut à droite.'],
+ collections:['Le catalogue','Collections les plus puissantes','Tes pages qui vendent, classées par liens éditoriaux reçus. Une collection orpheline (0 lien) est quasi invisible.'],
+ map:['La structure','Santé des silos','Chaque carte = un silo de ton site (un thème). L\'aiguille te dit s\'il est <b>bien maillé</b> (vert) ou s\'il <b>fuit du jus</b> (rouge), et la liste rouge te donne EXACTEMENT les articles à relier au pilier. Les silos malades sont remontés en haut : attaque-les dans l\'ordre. Clique « plan de correction » pour la to-do précise.'],
+ gsc:['Search Console','Actions Google','Ce que Google fait vraiment avec toi : mots-clés à pousser, titres à réécrire, pages qui se gênent. Données réelles sur 90 jours.'],
+ silogap:['La couverture','Articles manquants','Les sous-sujets qu\'un site expert devrait couvrir et que tu n\'as pas encore. Chaque trou = un sujet où Google ne peut pas te classer.'],
+ battle:['La priorisation','Ordre de bataille','Toutes les actions fusionnées et classées par priorité et effort. La colonne "Quoi faire" donne l\'action exacte.'],
+ pr:['La plomberie','Fuites de jus','Un simple voyant : la nav normale (panier, légal, suivi) n\'est PAS comptée. On ne traque que le vrai jus gaspillé (tags, /all, liens externes).'],
+ methodo:['Sous le capot','Méthodologie','Comment l\'outil crawle, score, et conseille — expliqué simplement, avec les vrais chiffres et formules du moteur.'],
+ glossaire:['Le lexique','Glossaire','Chaque terme du dashboard, en français clair avec une image pour comprendre d\'un coup.'],
+};
+const GLOSS=[
+['Les 2 scores : TA réalisée vs Structure','Tu as DEUX jauges. La <b>TA réalisée</b> (Search Console) = la domination que Google t\'accorde DÉJÀ — un indicateur RETARDÉ (il faut des mois). La <b>Structure on-site</b> (crawl seul, sans Google) = à quel point ton site est BÂTI comme une autorité (maillage des silos, piliers, couverture) — un indicateur AVANCÉ, ce que tu maîtrises tout de suite.','🌱 Le jardin et les fruits : la Structure, c\'est la qualité de ton jardin (sol, plants, arrosage) ; la TA réalisée, ce sont les fruits déjà récoltés. Un beau jardin jeune (structure haute) n\'a pas encore donné tous ses fruits (TA basse) — c\'est NORMAL, et c\'est bon signe.'],
+['Score Structure (sans GSC)','Note /100 de la qualité de construction on-site : 45% maillage (tes satellites remontent-ils vers leurs piliers ?), 25% piliers (as-tu de vraies pages-guides profondes ?), 30% couverture (assez de silos pour couvrir ton sujet ?). Zéro backlink, zéro Google : c\'est pur structurel. Bandes : Solide 80+ / Bien bâtie 64 / Correcte 48 / En chantier 32 / Fragile.','🏗️ Le diagnostic du bâtisseur : même avant que les clients arrivent, on peut juger si la maison est bien construite. Une boutique de 3 mois bien bâtie a une Structure haute alors que Google ne l\'a pas encore récompensée.'],
+['Un "90" dans Score TA','La note /100 d\'un groupe de pages sur un même sujet, fondée sur ta domination RÉELLE dans Google (Search Console), en valeur absolue. Recette v3 : 30% podiums top 3 + 18% top 10 + 12% impressions + 16% clics + 24% position moyenne.','Plus la note est haute, plus Google te classe haut sur BEAUCOUP de requêtes. C\'est une note de domination, pas un beau pourcentage sur un petit périmètre.'],
+['Pourquoi "valeur absolue" et pas pourcentage ?','L\'ancien score mesurait des PARTS (ex : % de tes mots-clés en top 3). Problème : ça PUNISSAIT la largeur — plus tu rankes de requêtes longue-traîne, plus ton dénominateur explose et plus ta "part" baisse. Dominer, c\'est avoir BEAUCOUP de positions en valeur réelle.','🏟️ Un stade : ce qui compte c\'est combien de sièges tu remplis (absolu), pas le % d\'un petit stade.'],
+['Podiums top 3 (30% — le plus lourd)','Le nombre de mots-clés où tu es dans les 3 premiers résultats Google. C\'est la preuve la plus dure de confiance que Google t\'accorde.','🥇 Les médailles d\'or : on compte combien tu en as, pas le ratio. 1481 podiums = empire.'],
+['Top 10 (18%)','Le nombre de mots-clés où tu es en page 1 (top 10). La profondeur de ta présence.','📋 La largeur de ta vitrine sur la 1re page de Google.'],
+['Impressions & clics (12% + 16%)','Combien de fois Google te MONTRE (impressions = il te juge pertinent) et combien on te CLIQUE (clics = ton trafic réel, qui contient déjà ton CTR).','👀 On t\'a vu X fois, on est venu Y fois. Du concret, pas une promesse on-page.'],
+['Position moyenne (24%)','À quelle hauteur Google te place en moyenne (pondérée par où il te montre vraiment). Pos 1 = 100, pos 10 = 51, pos 65 = 11. Remplace l\'ancien "autorité interne" qui était mort.','🎯 La proximité du sommet : être 3e partout vaut mieux que 12e partout.'],
+['Silo','Un ensemble de pages sur le même grand sujet, regroupées autour d\'une page-chef (collection ou pilier).','🗂️ Un rayon de ton magasin, ou un dossier dans un classeur.'],
+['PageRank / jus de liens','La force SEO qui circule par tes liens internes de page en page.','💧 De l\'eau dans des tuyaux : chaque lien en laisse passer un peu.'],
+['Fuite de PageRank (vraie définition)','Le jus de liens VRAIMENT gaspillé : liens vers des pages poubelles (archives de tags, /collections/all, /vendors) ou liens externes éditoriaux. La nav normale (panier, compte, mentions légales, suivi de colis) n\'est PAS une fuite — ces liens restent dans ton domaine, rien ne s\'évapore.','🚿 Un tuyau percé ne fuit que là où l\'eau SORT du circuit. Ton footer Shopify n\'est pas un trou — c\'est de la plomberie normale.'],
+['Priorité (onglet Architecte)','🔥 haute / 🟠 moyenne / ⚪ faible = l\'ordre dans lequel attaquer tes silos. La priorité privilégie ceux qui ont DÉJÀ de la traction (impressions réelles) × des leviers on-site dispo × valeur commerciale — pas les silos morts sans demande qu\'il faudrait ressusciter à perte. (Dans le code, ce calcul s\'appelle ROI.)','🛠️ Un chef de chantier : il t\'envoie d\'abord là où un coup de marteau rapporte le plus, pas réparer une ruine que personne ne visite.'],
+['Pilier vs satellite','Le PILIER est la page-chef d\'un silo (guide complet du sujet). Les SATELLITES sont les articles qui creusent un sous-sujet et renvoient vers le pilier. Un silo fort = 1 pilier costaud + des satellites qui le nourrissent et pointent vers la collection qui vend.','🌳 Le tronc (pilier) et les branches (satellites) : les branches ramènent la sève au tronc.'],
+['Fermeture du silo (onglet Santé des silos)','La part des satellites d\'un silo qui renvoient un lien vers leur pilier (la page-chef). 100% = tous remontent (silo fermé, le jus est concentré). Barème : 🔴 CRITIQUE sous 40% · 🟠 FRAGILE 40-69% · 🟢 SAIN 70%+. (Aussi appelé "cocon" dans la méthodo technique.)','🔌 Un circuit fermé = ça s\'allume. Fermeture basse = le jus s\'échappe au lieu de nourrir la page-chef.'],
+['Pilier : présent / mince / absent','La page-chef d\'un silo (le guide complet du sujet). PRÉSENT = vrai pilier (≥ 800 mots, ou page-pilier ≥ 300 mots recevant ≥ 3 liens). MINCE = trop court, à enrichir. ABSENT = aucune tête éditoriale, à écrire. Sans pilier, les satellites n\'ont rien à alimenter.','🌳 Le tronc de l\'arbre : sans tronc, les branches (satellites) ne mènent nulle part.'],
+['Striking distance','Des mots-clés où tu es déjà en page 1 (positions 4 à 10) mais pas encore dans le top 3.','🏃 Un coureur à 2 mètres de la ligne : un petit coup de pouce et il passe top 3 (là où sont les clics).'],
+['Quick win (page 2→1)','Des mots-clés coincés en page 2 (positions 11-20), juste sous la page 1.','📦 Un produit rangé en réserve : il suffit de le mettre en rayon (page 1) pour débloquer du trafic invisible.'],
+['Fuite CTR','Des mots-clés où tu es bien placé mais reçois beaucoup moins de clics que la normale.','🪧 Un stand bien placé à l\'entrée du marché mais avec une pancarte illisible : on passe devant sans s\'arrêter.'],
+['Cannibalisation','Deux pages (ou +) de TON site qui se battent pour le même mot-clé.','🥊 Deux de tes joueurs qui se gênent : au lieu d\'une page forte, deux pages tièdes qui se volent la place.'],
+['Silo-gap (article manquant)','Un sous-sujet important sur lequel tu n\'as pas (ou presque pas) d\'article. 🔴 Fantôme 0-2 · 🟠 Faible 3-6 · 🟢 Sain 7+.','🧩 Un puzzle où il manque des pièces : chaque trou = un sujet où Google ne peut pas te classer.']];
+const METHODO="<!-- ONGLET MÉTHODOLOGIE — injecté dans #panel (span-12). Pédagogique, chiffres réels. -->\n<div class=\"span-12\">\n\n  <nav class=\"method__toc\">\n    <a href=\"#m-crawl\">1 · Le Crawl</a>\n    <a href=\"#m-ta\">2 · Le score TA v3</a>\n    <a href=\"#m-forge\">3 · Cocons &amp; fuite de jus</a>\n    <a href=\"#m-archi\">4 · L'architecte de silos</a>\n  </nav>\n\n  <!-- ========== FICHE 1 : LE CRAWL ========== -->\n  <section class=\"method\" id=\"m-crawl\">\n    <div class=\"method__eyebrow\">Étape 1 — Radiographie</div>\n    <h2>Le Crawl — on aspire et on radiographie le site</h2>\n    <p class=\"method__sub\">Outil : ultimate_crawler_v2 · sortie : <span class=\"mono\">…full_crawl.json</span> + rapport Excel multi-onglets</p>\n\n    <p>Imaginez votre boutique comme une ville et chaque page comme une maison. Le crawler est un facteur qui passe devant <b>toutes</b> les maisons, note qui parle de qui (les liens) et dresse une carte de quartier : quelles maisons sont en plein centre (faciles à trouver), lesquelles sont perdues au bout d'un chemin sans panneau (les orphelines). Google fait exactement ce travail pour décider qui mérite d'être en haut. Cet outil le simule pour vous, <b>avant</b> Google.</p>\n    <p>Premier obstacle : entrer dans la ville. Beaucoup de sites sont protégés par Cloudflare, un videur qui repère les robots. L'astuce (<span class=\"mono\">curl_cffi impersonate=\"chrome\"</span>) est de se déguiser parfaitement en navigateur Chrome — pas juste l'étiquette, mais l'empreinte technique complète de la poignée de main réseau (TLS). Le videur voit un vrai visiteur humain et laisse passer.</p>\n    <p>Deuxième astuce : ne pas se perdre. Cliquer sur chaque lien de chaque lien explose en millions d'URLs. À la place on demande au site son plan officiel — le <b>sitemap.xml</b> — pour partir d'une liste propre (le « seed »), puis on n'élargit qu'avec les liens éditoriaux, par vagues.</p>\n    <p>Le cœur intelligent : distinguer un lien de <b>menu</b> (présent partout, sans valeur SEO réelle) d'un lien <b>éditorial</b> (écrit dans le corps d'un article, qui transmet de l'autorité). L'outil remonte tous les parents d'un lien dans le DOM : s'il croise un header/footer/menu, c'est du « chrome » (décor) ; sinon c'est du contextuel. Règle clé : <b>le chrome gagne toujours</b>, pour ne jamais surévaluer un site.</p>\n\n    <h3>Le déroulé, étape par étape</h3>\n    <ol class=\"method__steps\">\n      <li>Se déguiser en vrai Chrome : <span class=\"mono\">curl_cffi impersonate='chrome'</span> reproduit l'empreinte TLS d'un navigateur, ce qui passe le videur Cloudflare là où un robot classique serait bloqué. Une session est réutilisée par thread pour aller vite.</li>\n      <li>Récupérer le plan officiel : on lit le <span class=\"mono\">sitemap.xml</span>, on suit ses sous-sitemaps et on en tire une liste de départ propre — le « seed » — pour éviter le crawl en cascade qui exploserait.</li>\n      <li>Nettoyer chaque adresse (canonicalisation) : on enlève les variantes <span class=\"mono\">?variant=</span>, on réécrit <span class=\"mono\">/collections/X/products/Y</span> en <span class=\"mono\">/products/Y</span>, on supprime les locales étrangères (19 préfixes) et les <span class=\"mono\">/cdn/</span>. Une page = une seule adresse.</li>\n      <li>Garder la pagination utile : on conserve <span class=\"mono\">?page=2,3…</span> pour collections et blog (lister tous les produits), on ignore le bruit ailleurs.</li>\n      <li>Aspirer en plusieurs vagues (max 6 rounds, 12 ouvriers parallèles, micro-pause) ; on gère les 429 par attente progressive et on jette les réponses trop courtes (&lt; 60 Ko = challenge / page tronquée).</li>\n      <li>Classer chaque lien menu vs éditorial : on remonte les parents DOM ; header/footer/nav/menu → « chrome » (le chrome l'emporte toujours), sinon lien contextuel avec capture de l'ancre.</li>\n      <li>Construire le graphe et calculer le PageRank (contextuel + complet), la profondeur de clic depuis l'accueil (BFS), les liens entrants/sortants, et retirer les liens présents sur plus de 60 % du site.</li>\n      <li>Noter et diagnostiquer : <span class=\"mono\">authority_score</span> 0-100, repérage des orphelines, faibles, culs-de-sac, sur-liées, trop profondes ; reconstitution produit↔collection.</li>\n      <li>Exporter : un JSON complet et un Excel multi-onglets (Overview, Collections, Piliers, Articles, Produits, Ancres, Orphelins, Top Autorité, Pages profondes, URLs mortes).</li>\n    </ol>\n\n    <h3>Les chiffres qui font tourner la machine</h3>\n    <div class=\"method__nums\">\n      <div class=\"method__num\"><b>60 Ko</b><span>Seuil anti-blocage (THIN_HTML_BYTES) : une réponse 200 mais &lt; 60 Ko est traitée comme un challenge Cloudflare. Jusqu'à 2 nouvelles tentatives.</span></div>\n      <div class=\"method__num\"><b>19</b><span>Préfixes de langue exclus (en, es, de, it, pt, nl…) : crawl FR-only, les doublons de locale sont écartés.</span></div>\n      <div class=\"method__num\"><b>0,85</b><span>Amortissement du PageRank (damping), jusqu'à 80 itérations, tolérance 1e-10, gestion des nœuds sans lien sortant.</span></div>\n      <div class=\"method__num\"><b>&gt; 60 %</b><span>Filet sitewide : un lien présent sur plus de 60 % des pages est retiré du graphe pour ne pas fausser l'autorité.</span></div>\n      <div class=\"method__num\"><b>6 × 12</b><span>Crawl par vagues : 6 rounds max, 12 workers parallèles, délai 0,05 s, plafond 80 000 pages.</span></div>\n      <div class=\"method__num\"><b>5</b><span>Réessais max sur les 429, attente 2^tentative plafonnée à 12 s, en respectant l'en-tête Retry-After.</span></div>\n    </div>\n\n    <h3>Les champs que vous lirez dans les tables</h3>\n    <dl class=\"method__fields\">\n      <dt>inbound_contextual</dt><dd>Nombre de liens <b>éditoriaux</b> (dans le corps, hors menu/footer) qui pointent vers cette page. Le vrai signal d'autorité interne : 0 = page orpheline.</dd>\n      <dt>inbound_chrome</dt><dd>Liens entrants venant du décor (menu, footer, nav). Présents partout, ils comptent peu — séparés exprès pour ne pas gonfler le score.</dd>\n      <dt>pagerank_contextual</dt><dd>Popularité interne calculée uniquement sur les liens éditoriaux, normalisée 0-100. La version qui reflète la vraie circulation d'autorité.</dd>\n      <dt>authority_score</dt><dd>Note de synthèse 0-100 = 0,60×PageRank contextuel + 0,30×liens éditoriaux entrants + 10×poids de catégorie (collection/pilier = 1,0 ; produit = 0,7…).</dd>\n      <dt>depth_full / depth_editorial</dt><dd>Clics minimum depuis l'accueil (BFS), via tous liens ou via les seuls liens éditoriaux. -1 = inaccessible.</dd>\n      <dt>flag_orphan / flag_weak / flag_dead_end</dt><dd>Drapeaux : orpheline (0 entrant), faible (1-2 entrants), cul-de-sac (0 lien éditorial sortant).</dd>\n    </dl>\n  </section>\n\n  <!-- ========== FICHE 2 : TA v3 ========== -->\n  <section class=\"method\" id=\"m-ta\">\n    <div class=\"method__eyebrow\">Étape 2 — La note</div>\n    <h2>Le score de Topical Authority v3 — l'autorité thématique d'un silo</h2>\n    <p class=\"method__sub\">Outil : topical_meter.py · croise le crawl avec Google Search Console (90 jours)</p>\n\n    <p>Imaginez Google comme un jury de concours. Pour chaque thème de votre site (un « silo » : par exemple <em>Films Spider-Man</em> ou <em>bracelet homme</em>), le jury distribue des médailles. Le score TA v3 ne fait qu'une chose : compter <b>vraiment</b> les médailles que Google vous a déjà décernées, à partir des données réelles de Search Console. Pas de promesse, pas de théorie — ce que Google fait concrètement.</p>\n    <p>Pourquoi compter en valeur absolue et pas en pourcentage ? Un commerce qui vend 10 000 articles mais rate quelques ventes « perd » en pourcentage, alors qu'un petit stand qui vend ses 5 articles affiche 100 % de réussite. Le pourcentage récompenserait le petit stand — absurde. L'autorité, c'est le <b>volume de dominance réelle</b>, pas un taux. La v2 faisait cette erreur ; la v3 compte des médailles brutes.</p>\n    <p>Comme ces nombres sont énormes (jusqu'à 650 000 impressions), on les « compresse » avec un logarithme entre un plancher (bruit, vaut 0) et un plafond (saturation, vaut 100). Passer de 1 à 10 podiums compte beaucoup ; passer de 1400 à 1500 compte peu — exactement comme le mérite d'un champion qui gagne déjà tout.</p>\n    <p>Pour le score <b>global</b> du site, on additionne les signaux bruts de tous les silos <b>avant</b> de calculer — jamais la moyenne des scores. Sinon, 20 petits silos noieraient votre champion. On somme les médailles de toute l'équipe, puis on note l'équipe.</p>\n\n    <h3>La formule v3, en clair</h3>\n    <div class=\"callout callout--info\">\n      <div class=\"callout__icon\">∑</div>\n      <div>\n        <div class=\"callout__title\">TA = 0,30·top3 + 0,18·top10 + 0,12·impressions + 0,16·clics + 0,24·qualité_position</div>\n        <div class=\"callout__body\">Somme des poids = 1,0. Le podium (top3, 30 %) est le signal le plus lourd ; la qualité de position (24 %) remplace l'ancien terme « internal » qui était mort en v2. Ancres log lo→hi : top3 (1-1500), top10 (1-6500), impressions (300-650 000), clics (1-18 000). La qualité de position va de pos1 = 100 à pos110 = 0 (log base 110).</div>\n      </div>\n    </div>\n\n    <h3>Le déroulé, étape par étape</h3>\n    <ol class=\"method__steps\">\n      <li>Récupère les données <b>réelles</b> de Search Console (clics, impressions, position) sur 90 jours, croisées avec le crawl du site.</li>\n      <li>Identifie les silos : ancre chaque silo sur une collection ou un pilier ayant au moins 5 liens internes entrants, puis rattache chaque article/produit au silo dont le titre partage le plus de mots-clés.</li>\n      <li>Additionne pour chaque silo les 5 signaux bruts : top3 (position ≤ 3), top10 (≤ 10), impressions, clics, et position moyenne pondérée par les impressions.</li>\n      <li>Compresse chaque gros nombre en note 0-100 via un logarithme entre ancre basse (bruit) et haute (saturation).</li>\n      <li>Calcule la qualité de position (proximité du sommet) : pos1 = 100, pos10 ≈ 51, pos20 ≈ 36.</li>\n      <li>Combine selon la formule pondérée (somme des poids = 1,0).</li>\n      <li>Filtre les silos-fantômes : si aucune requête, ou si top3+top10+clics = 0 avec moins de 300 impressions, le score est forcé à 0 (pas d'autorité inventée).</li>\n      <li>Calcule le score <b>global</b> en sommant les signaux bruts de tous les silos puis en appliquant la formule — jamais en moyennant.</li>\n      <li>Classe chaque score dans une bande de lecture colorée et exporte en JSON.</li>\n    </ol>\n\n    <h3>Les 6 bandes de lecture</h3>\n    <div class=\"bandscale\" style=\"margin-top:8px\">\n      <div class=\"seg b-absent\"><span class=\"rng\">0–11</span><span class=\"nm\">Absent</span></div>\n      <div class=\"seg b-faible\"><span class=\"rng\">12–29</span><span class=\"nm\">Faible</span></div>\n      <div class=\"seg b-emergent\"><span class=\"rng\">30–49</span><span class=\"nm\">Émergent</span></div>\n      <div class=\"seg b-credible\"><span class=\"rng\">50–69</span><span class=\"nm\">Crédible</span></div>\n      <div class=\"seg b-autorite\"><span class=\"rng\">70–85</span><span class=\"nm\">Autorité</span></div>\n      <div class=\"seg b-reference\"><span class=\"rng\">86–100</span><span class=\"nm\">Référence</span></div>\n    </div>\n    <p style=\"margin-top:14px\">Validation réelle citée dans le code : <em>Films Spider-Man</em> passe de 54 à <b>90</b> (Référence), <em>bracelet-homme</em> de 46 à <b>28</b> (Faible), un silo vide tombe à <b>0</b>. Garde anti-silo-fantôme : seules les requêtes avec ≥ 5 impressions comptent dans top3/top10.</p>\n\n    <h3>Les champs affichés</h3>\n    <dl class=\"method__fields\">\n      <dt>TA</dt><dd>Score 0-100 du silo (1 décimale), synthèse pondérée des 5 signaux GSC absolus.</dd>\n      <dt>band / band_color</dt><dd>Bande de lecture et sa couleur, pour interpréter le TA d'un coup d'œil.</dd>\n      <dt>site_score / site_band</dt><dd>Score global, calculé en sommant les signaux bruts de tous les silos (jamais une moyenne).</dd>\n      <dt>top3 / top10</dt><dd>Requêtes positionnées ≤ 3 (podium) et ≤ 10 (première page) — les signaux les plus lourds (30 % + 18 %).</dd>\n      <dt>ranking / internal / coverage / ctr_eff</dt><dd>Diagnostics affichés à part mais <b>exclus</b> du score : 'ranking' (part de requêtes) et 'internal' cassaient la v2.</dd>\n    </dl>\n  </section>\n\n  <!-- ========== FICHE 3 : COCONS & FUITE ========== -->\n  <section class=\"method\" id=\"m-forge\">\n    <div class=\"method__eyebrow\">Étape 3 — La plomberie</div>\n    <h2>Cocons &amp; fuite de jus — la méthodologie TA Forge</h2>\n    <p class=\"method__sub\">Outil : ta_forge.py · sortie : <span class=\"mono\">…_ta_forge.json</span></p>\n\n    <p>Imaginez votre boutique comme un quartier de maisons (vos pages) reliées par des routes (vos liens internes). Google fait circuler une « énergie de popularité » (le PageRank, ou « jus SEO ») le long de ces routes. Bien organiser le quartier = concentrer cette énergie sur les pages qui rapportent.</p>\n    <p><b>1) Les cocons orientés-tête.</b> Un cocon est un quartier thématique : une grande place centrale (la « tête » : collection, pilier ou gros guide) entourée de petites maisons (les « satellites »). Le piège classique est un seul méga-cocon où tout est entassé. Pour l'éviter, le code retire d'abord les mots que tout le monde emploie : tout mot présent dans plus de <b>40 %</b> des titres (ex. « Spider-Man » sur une boutique Spider-Man) est jugé trop banal et soustrait. Il ne reste que les mots <b>discriminants</b>. Le code élit ensuite quelques têtes (au plus la racine carrée du nombre de pages) puis rattache chaque page à <b>une seule</b> tête (similarité de Jaccard ≥ 0,12). Résultat : 6 à 8 quartiers nets au lieu d'un magma.</p>\n    <p><b>2) La fermeture directionnelle.</b> Un cocon n'est utile que si les routes vont dans le bon sens. Le code mesure trois flux : <b>UP</b> (le satellite renvoie vers sa tête — le plus important, 45 %), <b>DOWN</b> (la tête renvoie vers ses satellites, 20 %) et <b>LATERAL</b> (deux satellites cousins se citent, 25 %). Surtout, il liste les « satellites sans remontée » : c'est le levier numéro un.</p>\n    <p><b>3) La fuite de jus, repensée.</b> Avant, l'outil hurlait dès qu'une page pointait vers le panier ou les mentions légales — alors que ces liens restent chez vous. La nouvelle règle ne compte que <b>deux</b> vraies fuites récupérables : un lien externe en dofollow et un lien interne vers une page-poubelle non indexable (<span class=\"mono\">/collections/all</span>, <span class=\"mono\">/vendors</span>, <span class=\"mono\">/tagged</span>…). Toute la nav normale n'est jamais comptée. Un garde-fou neutralise la pagination (<span class=\"mono\">?page=2</span>) d'une vraie collection. Ce n'est plus un KPI mais un simple voyant vert/rouge.</p>\n\n    <div class=\"callout callout--ok\">\n      <div class=\"callout__icon\">✓</div>\n      <div>\n        <div class=\"callout__title\">Le faux problème ×90, éliminé</div>\n        <div class=\"callout__body\">Avant le correctif, <b>89 %</b> de la « fuite » détectée était en réalité le footer Shopify standard — non supprimable et 0 PageRank récupérable. La nouvelle règle ne garde que les 2 classes vraiment actionnables : sur une boutique saine, le total récupérable avoisine 0. Concrètement, une liste de centaines de « fuites » alarmistes fond à une poignée de cas réels.</div>\n      </div>\n    </div>\n\n    <h3>Le déroulé, étape par étape</h3>\n    <ol class=\"method__steps\">\n      <li>PORTE de sécurité : compare le sitemap au crawl ; si plus de 5 % des pages manquent, l'outil refuse de tourner et exige un re-crawl (anti-données pourries).</li>\n      <li>Charge uniquement les pages qui répondent en 200 (live), ignore le reste.</li>\n      <li>Construit les cocons : soustrait les mots présents dans plus de 40 % des titres (head-terms ubiquitaires), garde les mots discriminants.</li>\n      <li>Élit les têtes (max racine-carrée-de-N) par score liens reçus + longueur + type, jamais en dessous de la moyenne.</li>\n      <li>Rattache chaque page à une seule tête (Jaccard ≥ 0,12) ; marque 🧲 toute tête qui aspire plus de 30 % du site.</li>\n      <li>Reconstruit un graphe éditorial pur : retire le boilerplate (cibles reçues par plus de 60 % des pages).</li>\n      <li>Calcule la fermeture UP/DOWN/LATERAL par cocon et sort la liste des satellites qui ne remontent pas.</li>\n      <li>Lance le check fuite : seulement EXTERNE_DOFOLLOW + INTERNE_POUBELLE, ignore la nav normale, neutralise la pagination.</li>\n      <li>Affiche le rapport console et exporte le JSON.</li>\n    </ol>\n\n    <h3>Les chiffres clés</h3>\n    <div class=\"method__nums\">\n      <div class=\"method__num\"><b>&gt; 40 %</b><span>Un mot présent dans plus de 40 % des titres est soustrait comme ubiquitaire (le nom de la niche).</span></div>\n      <div class=\"method__num\"><b>≥ 0,12</b><span>Similarité de Jaccard minimale pour rattacher une page à sa tête.</span></div>\n      <div class=\"method__num\"><b>&gt; 30 %</b><span>Tête capturant plus de 30 % du site = marquée 🧲, trop générique pour être un vrai cocon.</span></div>\n      <div class=\"method__num\"><b>45 / 20 / 25</b><span>Pondérations du score de fermeture : UP 0,45 · DOWN 0,20 · LATERAL 0,25.</span></div>\n      <div class=\"method__num\"><b>&gt; 5 %</b><span>PORTE : si la dérive sitemap/crawl dépasse 5 %, l'outil s'arrête et exige un re-crawl.</span></div>\n      <div class=\"method__num\"><b>2 classes</b><span>Seules EXTERNE_DOFOLLOW + INTERNE_POUBELLE comptent ; nav normale jamais comptée.</span></div>\n    </div>\n\n    <h3>Les champs affichés</h3>\n    <dl class=\"method__fields\">\n      <dt>fermeture</dt><dd>Santé d'un cocon sur 100 = 100×(0,45·UP + 0,20·DOWN + 0,25·LATERAL). Triés du pire au meilleur.</dd>\n      <dt>UP</dt><dd>Fraction des satellites qui renvoient vers leur tête. Le flux qui compte vraiment. UP faible = priorité de remaillage.</dd>\n      <dt>satellites_sans_remontee</dt><dd>Satellites qui ne pointent pas vers leur tête : la todo-list de liens à ajouter en priorité.</dd>\n      <dt>magnet 🧲</dt><dd>Drapeau : une tête qui capture plus de 30 % du site, trop générique.</dd>\n      <dt>EXTERNE_DOFOLLOW / INTERNE_POUBELLE</dt><dd>Les 2 seules classes de fuite. Action : passer en rel='nofollow' ou dé-mailler.</dd>\n      <dt>total_pr_leaked</dt><dd>PageRank réellement récupérable, jamais gonflé par la nav. Sur une boutique saine il avoisine 0 : voyant binaire, pas un KPI.</dd>\n    </dl>\n  </section>\n\n  <!-- ========== FICHE 4 : ARCHITECTE ========== -->\n  <section class=\"method\" id=\"m-archi\">\n    <div class=\"method__eyebrow\">Étape 4 — L'ordonnance</div>\n    <h2>L'architecte de silos — quel silo renforcer en premier</h2>\n    <p class=\"method__sub\">Outil : silo_architect.py · sortie : <span class=\"mono\">…_architecte.json</span> · zéro appel Google live</p>\n\n    <p>Imaginez votre site comme une bibliothèque. Chaque silo est un rayon thématique. Un rayon bien tenu a un grand panneau d'accueil qui explique tout le sujet (le <b>pilier</b>), des fiches détaillées (les <b>satellites</b>) et une caisse au bout du rayon où l'on achète (la <b>collection</b>, ou « money page »). L'architecte est le bibliothécaire-conseil : il passe rayon par rayon et dresse, pour chacun, une ordonnance précise.</p>\n    <p>Pour chaque silo il pose 4 diagnostics. <b>(1) Le pilier</b> : présent (article ≥ 800 mots, ou page pilier ≥ 300 mots recevant ≥ 3 liens), trop mince, ou absent ? <b>(2) Les satellites à créer</b> : quels sous-sujets manquent (lus dans le fichier de gaps, max 8) ? <b>(3) La fermeture du cocon</b> : quels articles existants parlent du sujet sans pointer vers le pilier ? <b>(4) Gaver la caisse</b> : quels articles à fort jus ne renvoient pas encore vers la page d'achat ?</p>\n    <p>Le cœur malin, c'est la façon de <b>prioriser</b> — le ROI. Il refuse de récompenser un gros trou : un micro-rayon mort (zéro impression Google) reste tout en bas. Sa formule multiplie trois choses : le <b>momentum</b> (les impressions réelles déjà obtenues), la <b>fixabilité</b> (combien de leviers concrets : liens à poser + satellites à créer) et le poids <b>commercial</b> (×1,6 si le silo mène à une vraie page de vente). On investit là où il y a déjà du mouvement <b>et</b> de l'argent au bout.</p>\n\n    <div class=\"callout callout--warn\">\n      <div class=\"callout__icon\">⚑</div>\n      <div>\n        <div class=\"callout__title\">ROI = max(momentum ; 0,55×importance) × fixabilité × bonus commercial</div>\n        <div class=\"callout__body\">momentum = 100×log(1+impressions)/log(1+200000) → 200 000 impressions valent 100. importance = 100×log(1+PageRank_money)/log(1+40) → un PageRank de money page ~40 vaut 100. fixabilité = 1 + (opportunités/8). bonus = ×1,6 si commercial. Garde-fou explicite : « on ne récompense pas le gros trou — un micro-silo mort reste bas, on investit où il y a déjà de la traction. »</div>\n      </div>\n    </div>\n\n    <h3>Le déroulé, étape par étape</h3>\n    <ol class=\"method__steps\">\n      <li>Charge et fusionne hors-ligne le crawl complet, le topical_meter (score TA + impressions/clics) et, en option, le silo_gap. Ne garde que les pages 200.</li>\n      <li>Construit le graphe des liens <b>éditoriaux uniquement</b> (corps des articles), en ignorant menu/footer — seuls les liens contextuels transmettent du jus.</li>\n      <li>Reprend la liste des silos du topical_meter puis rattache chaque page par recouvrement de mots-clés.</li>\n      <li>Diagnostique le pilier : présent (≥ 800 mots), mince, ou absent.</li>\n      <li>Liste les satellites à lier au pilier (triés par PageRank décroissant) qui ne pointent pas encore vers lui — pour fermer le cocon.</li>\n      <li>Liste les articles à fort jus (au-dessus du 60ᵉ percentile) qui ne renvoient pas vers la collection — pour gaver la money page.</li>\n      <li>Liste les satellites à créer (max 8, valeur haute→faible) et à étoffer (sous 600 mots, max 5).</li>\n      <li>Calcule le ROI et détecte les silos à créer de zéro : collections sans pilier ni satellites (moins de 3 liens éditoriaux entrants).</li>\n      <li>Trie tout par ROI, écrit le JSON et affiche un plan avec, pour chaque silo, sa prochaine action unique.</li>\n    </ol>\n\n    <h3>Les chiffres clés</h3>\n    <div class=\"method__nums\">\n      <div class=\"method__num\"><b>800 mots</b><span>PILLAR_MIN_WORDS : un pilier sous ce seuil est jugé « mince ».</span></div>\n      <div class=\"method__num\"><b>600 mots</b><span>THIN_SAT_WORDS : un satellite sous ce seuil est « à étoffer ».</span></div>\n      <div class=\"method__num\"><b>60ᵉ pct</b><span>HIGH_PR_PCTL : un article « à fort jus » est au-dessus du 60ᵉ percentile de PageRank du silo.</span></div>\n      <div class=\"method__num\"><b>×1,6</b><span>Bonus ROI si le silo mène à une vraie page de vente (collection).</span></div>\n      <div class=\"method__num\"><b>≥ 3 liens</b><span>Une collection avec moins de 3 liens éditoriaux entrants = silo à bâtir de zéro (pilier + 4-6 satellites).</span></div>\n      <div class=\"method__num\"><b>8 / 5</b><span>Plafonds d'affichage : 8 satellites à créer, 5 à étoffer par silo.</span></div>\n    </div>\n\n    <h3>Les champs affichés</h3>\n    <dl class=\"method__fields\">\n      <dt>pilier.status</dt><dd>présent (≥ 800 mots), mince, ou absent. Premier levier à activer s'il manque sur une page commerciale.</dd>\n      <dt>actions.lier_au_pilier</dt><dd>Satellites du silo qui ne pointent pas encore vers le pilier : la liste pour fermer le cocon (source, PageRank, ancre suggérée, URL cible).</dd>\n      <dt>actions.lier_a_collection</dt><dd>Articles à fort jus qui ne renvoient pas vers la money page : la liste pour gaver la caisse.</dd>\n      <dt>roi</dt><dd>Note de priorité (tri principal). Volontairement basse pour les silos morts sans traction.</dd>\n      <dt>verdict</dt><dd>DOMINANT (TA ≥ 70, protéger), À CRÉER (pilier manquant sur money page), À RENFORCER (TA ≥ 30) ou À CRÉER/RECONSTRUIRE.</dd>\n      <dt>prochaine_action</dt><dd>La seule action suivante, en cascade : écrire le pilier &gt; l'enrichir &gt; fermer le cocon &gt; gaver la collection &gt; créer des satellites &gt; maintenir.</dd>\n    </dl>\n  </section>\n\n</div>";
+function empty(m){return `<div class="empty span-12">${m}</div>`;}
+
+/* ===================== INIT / BOUTIQUE ===================== */
+async function init(){
+ try{const res=await fetch('data/stores.json');STORES=await res.json();}
+ catch(e){document.getElementById('panel').innerHTML=empty('Serveur indisponible — relance le dashboard.');return;}
+ buildStoreMenu();
+ wirePlumbing();
+ applyDensity();
+ const saved=localStorage.getItem('tm_store');
+ const first=STORES.find(s=>s.name===saved)||STORES[0];
+ if(first)pick(first.name);
+}
+function buildStoreMenu(){
+ document.getElementById('storeMenu').innerHTML=STORES.map(s=>`<div class="store-menu__row" data-store="${s.name}" role="option"><span class="store-menu__dot ${s.has_gsc?'':'off'}"></span><span class="store-menu__dom">${s.domain}</span>${s.ta!=null?`<span class="store-menu__mini">TA ${Math.round(s.ta)}</span>`:(s.structure_score!=null?`<span class="store-menu__mini">Struct. ${Math.round(s.structure_score)}</span>`:'')}${s.has_gsc?'<span class="store-menu__chip">GSC</span>':''}${s.has_silogap?'<span class="store-menu__chip">gap</span>':''}</div>`).join('');
+ document.querySelectorAll('.store-menu__row').forEach(r=>{r.setAttribute('tabindex','0');r.onclick=()=>{pick(r.dataset.store);};r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(r.dataset.store);}};});
+}
+async function pick(n){
+ STORE=n;localStorage.setItem('tm_store',n);
+ try{const res=await fetch('data/store-'+n+'.json');if(!res.ok)throw 0;DATA=await res.json();}
+ catch(e){DATA=null;document.getElementById('panel').innerHTML=empty('Boutique introuvable ou serveur indisponible.');return;}
+ document.getElementById('storeName').textContent=DATA.domain;
+ document.getElementById('storeDot').classList.toggle('off',!DATA.has_gsc);
+ setBadge('badgeSilogap',DATA.silogap_total);
+ setBadge('badgeSilos',(DATA.archi&&DATA.archi.plans||[]).filter(p=>(p.sat_n||0)>=3&&p.fermeture!=null&&p.fermeture<70).length);
+ const gs=document.getElementById('gscStatus');gs.textContent=DATA.has_gsc?'GSC connectée':'Pas de GSC';gs.classList.toggle('off',!DATA.has_gsc);
+ document.getElementById('dlCrawl').style.display='none';
+ document.querySelectorAll('.store-menu__row').forEach(r=>r.classList.toggle('active',r.dataset.store===n));
+ closeStoreMenu();
+ setTab(TAB);
+}
+function setBadge(id,val){const b=document.getElementById(id);if(!b)return;if(val){b.textContent=val;b.hidden=false;}else b.hidden=true;}
+
+/* ===================== NAV / ONGLET ===================== */
+function setTab(t){
+ TAB=t;
+ document.querySelectorAll('.nav__item').forEach(e=>e.classList.toggle('is-active',e.dataset.tab===t));
+ const meta=TABMETA[t]||['','',''];
+ document.getElementById('catLabel').textContent=meta[1];
+ document.getElementById('catSub').textContent=DATA?(DATA.domain+(DATA.gsc&&DATA.gsc.periode?' · GSC '+DATA.gsc.periode:DATA.has_gsc?' · GSC 90 j':' · sans GSC')):'';
+ document.getElementById('secEyebrow').textContent=meta[0];
+ document.getElementById('secTitle').textContent=meta[1];
+ document.getElementById('secLede').innerHTML=meta[2];
+ render();closeRail();
+}
+
+/* ===================== RENDER ===================== */
+function render(){const d=DATA,panel=document.getElementById('panel');if(!d||!d.summary){panel.innerHTML=empty('Données indisponibles pour cette boutique.');return;}
+ const R={overview:renderOverview,ta:renderTA,archi:renderArchi,pages:renderPages,collections:renderCollections,gsc:renderGSC,silogap:renderSilogap,battle:renderBattle,pr:renderPR,glossaire:renderGloss};
+ if(TAB=='map'){panel.innerHTML=renderSilos(d);}
+ else if(TAB=='methodo')panel.innerHTML=METHODO;
+ else panel.innerHTML=(R[TAB]||(()=>empty('—')))(d);
+}
+function bandscale(score){const segs=[['absent','0–11','Absent'],['faible','12–29','Faible'],['emergent','30–49','Émergent'],['credible','50–69','Crédible'],['autorite','70–85','Autorité'],['reference','86–100','Référence']];return `<div class="bandscale">`+segs.map(([k,r,n])=>`<div class="seg b-${k}"><span class="rng">${r}</span><span class="nm">${n}</span></div>`).join('')+`<div class="cursor" style="left:${Math.max(0,Math.min(100,score))}%"></div></div>`;}
+function structScale(score){const segs=[['#e8554e',32,'0–31','Fragile','#3a0f0c'],['#ff9d00',16,'32–47','En chantier','#3d2500'],['#fcd000',16,'48–63','Correcte','#3a3000'],['#57b87a',16,'64–79','Bien bâtie','#0c3422'],['#2f9e6e',20,'80–100','Solide','#08291c']];return `<div class="bandscale">`+segs.map(([bg,w,r,n,tc])=>`<div class="seg" style="flex:0 0 ${w}%;background:${bg};color:${tc}"><span class="rng">${r}</span><span class="nm">${n}</span></div>`).join('')+`<div class="cursor" style="left:${Math.max(0,Math.min(100,score))}%"></div></div>`;}
+function statSpan(label,val,suffix){return val!=null?`<span class="s">${label} <b>${val}${suffix||''}</b></span>`:'';}
+
+function renderOverview(d){let h='';
+ const ta=d.site_score, st=d.archi&&d.archi.structure;
+ let gauges='';
+ if(ta){const b=band(ta.score);gauges+=gaugeBlock(ta.score,b.col,b.nom,'TA réalisée','ce que Google fait déjà');}
+ if(st){const sb=structBand(st.score);gauges+=gaugeBlock(st.score,sb.col,sb.nom,'Structure on-site','comment ton site est bâti');}
+ if(ta||st){
+  const gap=(ta&&st)?(st.score-ta.score):null;let msg;
+  if(gap!=null&&gap>=15)msg=`Ta <b>structure (${st.score})</b> est nettement en avance sur tes <b>résultats Google (${ta.score})</b> : ton site est <b>bien bâti</b>, Google n'a pas encore fini de te récompenser. C'est l'écart typique d'une boutique jeune et propre — continue, le ranking suit la structure.`;
+  else if(gap!=null&&gap<=-15)msg=`Google te récompense déjà (<b>${ta.score}</b>) au-delà de ta structure actuelle (<b>${st.score}</b>) : solidifie ton maillage et tes piliers pour ne pas plafonner.`;
+  else if(gap!=null)msg=`Structure (<b>${st.score}</b>) et résultats Google (<b>${ta.score}</b>) sont alignés : ta construction et ta performance avancent ensemble.`;
+  else if(st)msg=`Pas encore de Search Console connectée : voici ta <b>Structure on-site (${st.score})</b> — à quel point ton site est bâti comme une autorité (maillage, piliers, couverture), indépendamment de Google.`;
+  else msg=VERDICTS[band(ta.score).nom]||'';
+  h+=`<div class="hero-grid span-12"><div class="hero-gauges">${gauges}</div><div><div class="verdict">${d.domain}</div><div class="verdict__expl">${msg}</div><div class="verdict__expl" style="margin-top:10px"><b>Deux scores complémentaires.</b> La <b>TA réalisée</b> = ta domination déjà obtenue dans Google (indicateur <i>retardé</i>, il faut du temps). La <b>Structure on-site</b> = comment ton site est construit pour faire autorité — maillage des silos, piliers, couverture — <b>sans backlink ni GSC</b> (indicateur <i>avancé</i> : ce que tu maîtrises tout de suite).</div><div class="verdict__stats">${ta?`<span class="s"><b>${ta.actifs}</b> silos actifs</span><span class="s"><b>${ta.dormants}</b> dormants</span>`:''}${st?statSpan('maillage',st.maillage,'%'):''}${st&&st.n_silos!=null?`<span class="s"><b>${st.n_silos}</b> silos bâtis</span>`:''}${st?statSpan('couverture',st.couverture,'%'):''}</div></div></div>`;
+ }
+ if(ta)h+=`<div class="span-12"><div class="scale-lbl">Échelle TA réalisée</div>${bandscale(ta.score)}</div>`;
+ if(st)h+=`<div class="span-12"><div class="scale-lbl">Échelle Structure on-site</div>${structScale(st.score)}</div>`;
+ let k=[];
+ if(d.archi)k.push(['accent',(d.archi.synthese.a_renforcer||[]).length,'Silos à renforcer','déjà de la traction → à pousser']);
+ if(d.archi)k.push(['info',(d.archi.silos_a_creer||[]).length,'Money pages sans silo','collections à soutenir éditorialement']);
+ if(d.archi){const aff=(d.archi.plans||[]).filter(p=>(p.sat_n||0)>=3&&p.fermeture!=null&&p.fermeture<70).length;k.push([aff>0?'warn':'ok',aff,'Silos à fermer','satellites qui ne remontent pas (onglet Santé des silos)']);}
+ if(d.striking)k.push(['warn',d.striking.length,'À un cheveu du top 3','positions 4-10 à pousser']);
+ if(d.silogap_total)k.push(['info',d.silogap_total,'Articles manquants','sujets non couverts']);
+ if(d.pr_leak)k.push([d.pr_leak.total<60?'ok':'warn',d.pr_leak.total,'Jus récupérable','check sécurité (nav normale exclue)']);
+ if(k.length)h+=`<div class="kpi-grid span-12">`+k.map(([c,n,l,s])=>`<div class="kpi is-${c}"><div class="kpi__label">${l}</div><div class="kpi__value">${n}</div><div class="kpi__sub">${s}</div></div>`).join('')+`</div>`;
+ const s=d.summary;let cat=[[s.pages,'Pages'],[s.produits,'Produits'],[s.articles,'Articles'],[s.collections,'Collections']];
+ if(d.gsc){cat.push([(d.gsc.clics||0).toLocaleString(),'Clics Google / 90j']);cat.push([((d.gsc.impressions||0)/1000).toFixed(0)+'k','Impressions / 90j']);}
+ h+=`<div class="span-12" style="margin-top:6px"><span class="cap">Ton catalogue</span></div><div class="kpi-grid span-12">`+cat.map(([n,l])=>`<div class="kpi"><div class="kpi__value">${n}</div><div class="kpi__label" style="margin-top:4px">${l}</div></div>`).join('')+`</div>`;
+ return h;
+}
+function renderTA(d){if(!d.ta_silos)return empty('Pas de données Google Search Console pour cette boutique → pas de score TA.');
+ return `<div class="card card--flush span-12"><div class="card__head"><div class="card__title"><i>▤</i> Score par silo</div><div class="card__meta">${d.ta_silos.length} silos · formule v3</div></div><div class="card__body"><div class="bars">`+d.ta_silos.map(s=>{const b=band(s.TA);return `<div><div class="bar__top"><span class="bar__name">${s.silo} <span class="mono" title="mots-clés classés dans les 3 premiers résultats Google · position moyenne · clics sur 90 jours">${s.top3} mots-clés en top 3 · pos. moy. ${s.pos} · ${(s.clics||0).toLocaleString()} clics/90j</span></span><span class="bar__val"><span class="bar__num" style="color:${b.col}">${s.TA}</span><span class="badge badge--${b.key}">${b.nom}</span></span></div><div class="bar__track"><div class="bar__fill" style="width:${s.TA}%;background:${b.col}"></div></div></div>`;}).join('')+`</div></div></div>`;
+}
+function renderArchi(d){if(!d.archi)return empty('Architecte pas encore généré pour cette boutique.');
+ const sy=d.archi.synthese||{};
+ let h=`<div class="card span-4"><div class="kpi__label">Dominants</div><div class="kpi__value" style="color:var(--ok)">${(sy.dominants||[]).length}</div><div class="kpi__sub">à protéger & exploiter</div></div><div class="card span-4"><div class="kpi__label">À renforcer</div><div class="kpi__value" style="color:var(--accent)">${(sy.a_renforcer||[]).length}</div><div class="kpi__sub">priorité haute en tête</div></div><div class="card span-4"><div class="kpi__label">À créer / structurer</div><div class="kpi__value" style="color:var(--warn)">${((sy.a_creer_ou_reconstruire||[]).length)+((sy.a_structurer||[]).length)}</div><div class="kpi__sub">pilier manquant ou faible</div></div>`;
+ h+=`<div class="span-12">`+d.archi.plans.slice(0,20).map(p=>{const money=p.commercial?'💰':'📄',A=p.actions;
+   const PRIO={haute:['danger','🔥 Priorité haute'],moyenne:['warn','🟠 Priorité moyenne'],faible:['info','⚪ Priorité faible']};const pr=PRIO[p.priorite]||PRIO.moyenne;
+   let b=`<div class="silo-block"><h3>${money} ${p.silo} ${p.TA!=null?`<span class="badge badge--${bandKey(p.band)}">${p.TA} ${p.band}</span>`:`<span class="badge badge--info">structure</span>`} <span class="badge badge--${pr[0]}" title="Priorité = traction réelle (impressions) × leviers dispo × valeur commerciale">${pr[1]}</span> <span class="mono">#${p.rang||''}${p.clics?` · ${(p.clics).toLocaleString()} clics/90j`:''}</span></h3>`;
+   b+=`<div class="nextact">➡️ <b>${p.prochaine_action}</b></div>`;
+   const ps=p.pilier.status;b+=`<div class="miss"><span class="badge badge--${ps=='présent'?'ok':ps=='mince'?'warn':'danger'}">pilier ${ps}</span> ${p.pilier.titre?p.pilier.titre+' ('+p.pilier.mots+' mots)':'aucune tête éditoriale — à écrire'}</div>`;
+   if((A.creer_satellites||[]).length)b+=`<div class="archi-grp"><div class="archi-h">✍️ Satellites à créer</div>`+A.creer_satellites.slice(0,5).map(x=>`<div class="miss">📝 ${x.sujet}${x.pourquoi?` <span class="mono">— ${x.pourquoi}</span>`:''}</div>`).join('')+`</div>`;
+   if((A.lier_au_pilier||[]).length)b+=`<div class="archi-grp"><div class="archi-h">🔗 Lier au pilier (fermer le cocon)</div>`+A.lier_au_pilier.slice(0,5).map(x=>`<div class="miss"><span class="mono">PR ${x.pr}</span> ${x.source} <span class="anchor">→ « ${x.ancre} »</span></div>`).join('')+`</div>`;
+   if((A.lier_a_collection||[]).length)b+=`<div class="archi-grp"><div class="archi-h">💰 Lier à la collection (money page)</div>`+A.lier_a_collection.slice(0,5).map(x=>`<div class="miss"><span class="mono">PR ${x.pr}</span> ${x.source} <span class="anchor">→ « ${x.ancre} »</span></div>`).join('')+`</div>`;
+   return b+`</div>`;}).join('')+`</div>`;
+ if((d.archi.silos_a_creer||[]).length)h+=`<div class="card card--flush span-12"><div class="card__head"><div class="card__title"><i>🆕</i> Silos à créer de zéro</div><div class="card__meta">money pages sans support éditorial</div></div><div class="table-wrap"><table class="tbl stack"><thead><tr><th>Collection (money page)</th><th class="n">PR</th><th class="n">Liens édito</th><th>À faire</th></tr></thead><tbody>`+d.archi.silos_a_creer.map(s=>`<tr><td class="lead" data-l="Collection">${s.collection}</td><td class="n" data-l="PR">${s.pr}</td><td class="n" data-l="Liens édito">${s.inbound_edito}</td><td data-l="À faire">pilier + 4-6 satellites</td></tr>`).join('')+`</tbody></table></div></div>`;
+ return h;
+}
+function renderPages(d){const m=d.crawl_meta||{};
+ return `<div class="card card--flush span-12"><div class="card__head"><div class="card__title"><i>▣</i> Pages les plus puissantes</div><div class="card__meta">${m.live||0} pages · ${(m.liens||0).toLocaleString()} liens internes</div></div><div class="table-wrap"><table class="tbl stack"><thead><tr><th class="n">#</th><th>Page</th><th>Type</th><th class="n">PR</th><th class="n">Entrants</th><th class="n col-opt">Sortants</th><th class="n col-opt">Prof.</th><th class="n col-opt">Mots</th><th>Alertes</th></tr></thead><tbody>`+d.top_pages.map((p,i)=>`<tr><td class="n" data-l="#">${i+1}</td><td class="lead" data-l="Page" title="${p.url}">${p.title}</td><td data-l="Type"><span class="catpill ${p.cat}">${catLabel(p.cat)}</span></td><td class="n hi" data-l="PR">${p.pr}</td><td class="n" data-l="Entrants">${p.inb} <span class="mono">/${p.inb_total}</span></td><td class="n col-opt" data-l="Sortants">${p.outb}</td><td class="n col-opt" data-l="Prof.">${p.depth}</td><td class="n col-opt" data-l="Mots">${p.words}</td><td data-l="Alertes">${(p.flags||[]).map(f=>`<span class="flag">${f}</span>`).join('')}</td></tr>`).join('')+`</tbody></table></div></div>`;
+}
+function renderCollections(d){
+ return `<div class="card card--flush span-12"><div class="card__head"><div class="card__title"><i>▦</i> Collections les plus puissantes</div><div class="card__meta">classées par liens éditoriaux reçus</div></div><div class="table-wrap"><table class="tbl stack"><thead><tr><th class="n">#</th><th>Collection</th><th class="n">PR</th><th class="n">Liens édito</th><th class="n col-opt">Total</th><th class="n col-opt">Sortants</th><th class="n col-opt">Mots</th><th>État</th></tr></thead><tbody>`+d.top_collections.map((p,i)=>`<tr><td class="n" data-l="#">${i+1}</td><td class="lead" data-l="Collection" title="${p.url}">${p.title}</td><td class="n hi" data-l="PR">${p.pr}</td><td class="n" data-l="Liens édito">${p.inb}</td><td class="n col-opt" data-l="Total">${p.inb_total}</td><td class="n col-opt" data-l="Sortants">${p.outb}</td><td class="n col-opt" data-l="Mots">${p.words}</td><td data-l="État">${p.orphan?'<span class="flag">orpheline</span>':p.inb>=5?'<span class="ok-txt">✓ bien maillée</span>':'<span class="warn-txt">à renforcer</span>'}</td></tr>`).join('')+`</tbody></table></div></div>`;
+}
+let SILOSORT='urg';let SILOPLANLIST=[];
+function cleanTitle(s){return (s||'').replace(/^(Collection|Cocon|Article|Product)\s*:\s*/i,'').trim();}
+function fermBand(f){return f<40?['absent','CRITIQUE','danger']:f<70?['emergent','FRAGILE','warn']:['autorite','SAIN','autorite'];}
+function fermCol(f){return f<40?'var(--band-absent)':f<70?'var(--band-emergent)':'var(--band-autorite)';}
+function arcGauge(ferm){const f=Math.max(0,Math.min(100,ferm)),L=251.3,off=L*(1-f/100),col=fermCol(f);
+  return `<svg viewBox="0 0 200 122"><path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--bg-inset)" stroke-width="15" stroke-linecap="round"/><path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="${col}" stroke-width="15" stroke-linecap="round" stroke-dasharray="${L} ${L}" stroke-dashoffset="${off}"/><text class="v" x="100" y="92" text-anchor="middle" font-size="30" fill="${col}">${Math.round(f)}%</text><text class="l" x="100" y="116" text-anchor="middle">fermeture du silo</text></svg>`;}
+function renderSilos(d){
+  const all=(d.archi&&d.archi.plans||[]).filter(p=>(p.sat_n||0)>=3);
+  if(!all.length)return empty('L\'analyse des silos n\'a pas encore été calculée pour cette boutique — elle apparaîtra après le prochain audit.');
+  const withF=all.filter(p=>p.fermeture!=null);
+  const fmoy=withF.length?Math.round(withF.reduce((a,p)=>a+p.fermeture,0)/withF.length):0;
+  const orph=all.reduce((a,p)=>a+(p.orphelins||0),0);
+  const garage=(d.top_collections||[]).filter(c=>c.orphan||c.inb<3).sort((a,b)=>b.pr-a.pr);
+  let h=`<div class="kpi-grid span-12">
+    <div class="kpi is-info"><div class="kpi__label">Silos analysés</div><div class="kpi__value">${all.length}</div><div class="kpi__sub">thèmes avec pilier + satellites</div></div>
+    <div class="kpi is-${fmoy>=70?'ok':fmoy>=40?'warn':'danger'}"><div class="kpi__label">Fermeture moyenne</div><div class="kpi__value">${fmoy}%</div><div class="kpi__sub">satellites qui remontent au pilier</div></div>
+    <div class="kpi is-${orph>0?'warn':'ok'}"><div class="kpi__label">Satellites à relier</div><div class="kpi__value">${orph}</div><div class="kpi__sub">articles qui ne pointent pas le pilier</div></div>
+    <div class="kpi is-${garage.length>0?'warn':'ok'}"><div class="kpi__label">Collections sans jus</div><div class="kpi__value">${garage.length}</div><div class="kpi__sub">money pages déconnectées</div></div></div>`;
+  const sorts=[['urg','🚑 Urgence'],['taille','📦 Taille'],['ferm','📉 Fermeture']];
+  h+=`<div class="span-12"><div class="gscbtn">`+sorts.map(([k,l])=>`<button class="${k==SILOSORT?'on':''}" onclick="SILOSORT='${k}';render()">${l}</button>`).join('')+`</div></div>`;
+  const fv=p=>p.fermeture==null?-1:p.fermeture;const sorted=[...all];
+  if(SILOSORT=='taille')sorted.sort((a,b)=>b.sat_n-a.sat_n);
+  else if(SILOSORT=='ferm')sorted.sort((a,b)=>fv(a)-fv(b));
+  else sorted.sort((a,b)=>(fv(a)-fv(b))||((b.orphelins||0)-(a.orphelins||0)));
+  SILOPLANLIST=[];
+  h+=`<div class="silos-grid span-12">`+sorted.map(p=>{
+    const name=cleanTitle(p.silo);const f=p.fermeture;const noPil=(f==null);
+    const fb=noPil?['absent','PILIER À ÉCRIRE','danger']:fermBand(f);const bk=fb[0];
+    const idx=SILOPLANLIST.push({name,plan:p})-1;
+    const gauge=noPil?`<div class="silo-nopillar">✍️<div>Pas de pilier — à écrire</div></div>`:arcGauge(f);
+    const ps=p.pilier.status;const mp=(p.money_url||'').split('/').filter(Boolean).pop();const orphList=p.actions.lier_au_pilier||[];
+    let card=`<div class="silo-card ${bk=='absent'?'is-critical':''}"><div class="silo-card__head b-${bk}"><div><div class="silo-card__name">${name}</div><div class="mono">${p.sat_n} satellites${p.cat=='collection'?' · collection':''}</div></div><span class="badge badge--${fb[2]}">${fb[1]}</span></div><div class="silo-card__body"><div class="silo-gauge">${gauge}</div>`;
+    card+=`<div class="silo-money"><span class="badge badge--${ps=='présent'?'ok':ps=='mince'?'warn':'danger'}">pilier ${ps}</span> ${p.pilier.titre?p.pilier.titre.slice(0,44)+' ('+p.pilier.mots+' mots)':'à écrire'}${p.money_url?`<br>→ money page : <b>${mp||'collection'}</b>`:''}</div>`;
+    if(p.orphelins>0){card+=`<div><div class="orphans__title">↛ ${p.orphelins} satellite${p.orphelins>1?'s':''} ne remonte${p.orphelins>1?'nt':''} pas au pilier</div>`+orphList.slice(0,6).map(x=>`<div class="orphan-pill">⛓ ${x.source}</div>`).join('')+(p.orphelins>Math.min(6,orphList.length)?`<div class="mono" style="margin-top:4px">+ ${p.orphelins-Math.min(6,orphList.length)} autres</div>`:'')+`</div>`;}
+    else if(!noPil)card+=`<div class="orphan-ok">✓ Cocon fermé, tous les satellites remontent au pilier</div>`;
+    const vtxt=noPil?`Crée le pilier de ce silo (page-guide du thème) : sans tête, les satellites n'ont rien à alimenter.`:f<40?`Ce silo fuit. Relie ${p.orphelins} articles à son pilier pour le fermer et concentrer le jus.`:f<70?`Silo à moitié fermé. Relie ${p.orphelins} articles au pilier pour le consolider.`:p.orphelins>0?`Presque parfait. Encore ${p.orphelins} lien${p.orphelins>1?'s':''} vers le pilier et c'est fermé.`:`Silo sain. Maintiens le maillage quand tu ajoutes des articles.`;
+    card+=`<div class="silo-verdict">${vtxt}</div>`;
+    if(orphList.length||((p.actions.lier_a_collection||[]).length))card+=`<button class="btn btn--sm" onclick="openSiloPlan(${idx})">Voir le plan de correction ↗</button>`;
+    return card+`</div></div>`;
+  }).join('')+`</div>`;
+  if(garage.length)h+=`<div class="card card--flush span-12"><div class="card__head"><div class="card__title"><i>🅿️</i> Collections sans jus (money pages déconnectées)</div><div class="card__meta">${garage.length} à remailler</div></div><div class="card__body">`+garage.map(c=>`<span class="garage-pill">${cleanTitle(c.title)} · PR ${c.pr} · ${c.inb} liens</span>`).join('')+`</div></div>`;
+  return h;
+}
+function openSiloPlan(idx){
+  const item=SILOPLANLIST[idx];if(!item||!item.plan)return;const plan=item.plan;
+  let ov=document.getElementById('siloOverlay');
+  if(!ov){ov=document.createElement('div');ov.className='silo-overlay';ov.id='siloOverlay';document.body.appendChild(ov);}
+  const sec=(titre,arr)=>arr&&arr.length?`<div class="archi-h" style="margin-top:12px">${titre}</div>`+arr.map(x=>`<div class="miss"><span class="mono">PR ${x.pr}</span> ${x.source} <span class="anchor">→ « ${x.ancre} »</span><button class="copy-mini" data-copy="${(x.source+' → '+x.ancre).replace(/"/g,'&quot;')}" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.dataset.copy);this.textContent='copié ✓'">copier</button></div>`).join(''):'';
+  const body=sec('🔗 Lier au pilier (fermer le cocon)',plan.actions.lier_au_pilier)+sec('💰 Lier à la collection (money page)',plan.actions.lier_a_collection);
+  ov.innerHTML=`<button class="silo-overlay__close" onclick="closeSiloPlan()" aria-label="Fermer">×</button><h3 style="color:var(--accent);margin-bottom:4px">${item.name}</h3><div class="mono" style="margin-bottom:6px">Plan de correction du maillage</div>`+(body||`<div class="empty">Aucune action : silo déjà fermé ou pas d'architecte pour ce silo.</div>`);
+  ov.hidden=false;document.getElementById('scrim').classList.add('is-open');const cb=ov.querySelector('.silo-overlay__close');if(cb)cb.focus();
+}
+function closeSiloPlan(){const ov=document.getElementById('siloOverlay');if(ov)ov.hidden=true;document.getElementById('scrim').classList.remove('is-open');}
+function renderGSC(d){if(!d.ctr_leaks)return empty('Pas de données Google Search Console pour cette boutique.');
+ const subs=[['ctr_leaks','Bien placé, peu cliqué'],['striking','À un cheveu du top 3'],['quick_wins','Coincé en page 2'],['cannib','Pages qui se gênent']];
+ const HELP={ctr_leaks:'Bien classé mais peu de clics → réécris le titre/la description (5 min).',striking:'En page 1 (positions 4-10). Renforce ces pages pour viser le top 3.',quick_wins:'Coincé en page 2 (positions 11-20). Un coup de pouce les bascule en page 1.',cannib:'Plusieurs pages se battent pour le même mot-clé. Fusionne ou différencie.'};
+ let h=`<div class="span-12"><div class="gscbtn">`+subs.map(([k,l])=>`<button class="${k==GSCSUB?'on':''}" onclick="GSCSUB='${k}';render()">${l}</button>`).join('')+`</div><div class="lede">${HELP[GSCSUB]}</div>`;
+ h+=`<div class="card card--flush"><div class="table-wrap">`;
+ if(GSCSUB=='cannib'){const rows=d.cannib||[];h+=`<table class="tbl stack"><thead><tr><th>Mot-clé</th><th class="n">Pages en conflit</th><th class="n">Impressions</th></tr></thead><tbody>`+(rows.length?rows.map(x=>`<tr><td class="lead" data-l="Mot-clé">${x.q}</td><td class="n" data-l="Pages">${x.n_pages}</td><td class="n" data-l="Impr">${(x.total_impr||0).toLocaleString()}</td></tr>`).join(''):`<tr><td colspan="3" style="text-align:center;color:var(--ok);padding:18px">Rien à signaler ici — bon signe.</td></tr>`)+`</tbody></table>`;}
+ else{const rows=d[GSCSUB]||[];h+=`<table class="tbl stack"><thead><tr><th>Mot-clé</th><th class="n">Pos.</th><th class="n">Impr.</th><th class="n">Clics</th><th class="n col-opt">CTR</th><th class="col-opt">Page</th></tr></thead><tbody>`+(rows.length?rows.map(x=>`<tr><td class="lead" data-l="Mot-clé">${x.q}</td><td class="n" data-l="Pos.">${x.pos}</td><td class="n" data-l="Impr.">${(x.impr||0).toLocaleString()}</td><td class="n" data-l="Clics">${x.clics!=null?x.clics:'-'}</td><td class="n col-opt" data-l="CTR">${x.ctr!=null?x.ctr+'%':'-'}</td><td class="mono col-opt" data-l="Page">${(x.page||'').slice(0,36)}</td></tr>`).join(''):`<tr><td colspan="6" style="text-align:center;color:var(--ok);padding:18px">Rien à signaler ici — bon signe.</td></tr>`)+`</tbody></table>`;}
+ return h+`</div></div></div>`;
+}
+function renderSilogap(d){if(!d.silogap_detail)return empty('Les articles manquants n\'ont pas encore été calculés pour cette boutique — ils apparaîtront après le prochain audit.');
+ let h=`<div class="span-12">`;
+ (d.silogap_plan||[]).forEach(p=>{h+=`<div class="silo-block"><h3>#${p.rang} — ${p.silo}</h3><div class="callout__body" style="margin-bottom:6px">${p.pourquoi||''}</div>`+(p.articles||[]).map(a=>`<div class="miss">📝 ${a}</div>`).join('')+`</div>`;});
+ h+=`<div class="cap" style="margin:14px 0 8px">Détail par sujet</div>`;
+ d.silogap_detail.forEach(s=>{h+=`<div class="silo-block"><h3>${s.silo}</h3><div class="callout__body" style="margin-bottom:6px">${s.verdict}</div>`+s.manquants.map(m=>`<div class="miss"><span class="badge badge--${m.val=='haute'?'danger':m.val=='moyenne'?'warn':'info'}">${m.val}</span> ${m.t} <span class="mono">${m.type}</span></div>`).join('')+`</div>`;});
+ return h+`</div>`;
+}
+function renderBattle(d){if(!d.actions)return empty('Ordre de bataille pas encore généré pour cette boutique.');
+ return `<div class="card card--flush span-12"><div class="card__head"><div class="card__title"><i>⚑</i> Ordre de bataille</div><div class="card__meta">${d.actions.length} actions priorisées</div></div><div class="table-wrap"><table class="tbl stack"><thead><tr><th>Prio</th><th>Type</th><th>Quoi faire</th><th>Cible</th><th class="col-opt">Gain estimé</th><th class="col-opt">Effort</th></tr></thead><tbody>`+d.actions.map(a=>`<tr><td data-l="Prio"><span class="prio p${a.priorite}">P${a.priorite}</span></td><td data-l="Type">${a.type}</td><td class="lead" data-l="Quoi faire">${a.verdict}</td><td data-l="Cible">${a.cible}</td><td class="col-opt" data-l="Gain">${a.gain}</td><td class="col-opt" data-l="Effort">${a.effort}</td></tr>`).join('')+`</tbody></table></div></div>`;
+}
+function renderPR(d){if(!d.pr_leak)return empty('Pas de données de maillage.');
+ const t=d.pr_leak.total,ok=t<60;
+ let h=`<div class="callout callout--${ok?'ok':'warn'} span-12"><div class="callout__icon">${ok?'✓':'⚑'}</div><div><div class="callout__title">${ok?'Plomberie saine — ~'+t+' PageRank récupérable':'À nettoyer — '+t+' PageRank récupérable'}</div><div class="callout__body"><b>La nav normale (panier, compte, mentions légales, suivi de colis, recherche) n'est PAS comptée</b> : ces liens restent dans ton domaine, rien ne s'évapore. On ne compte que la vraie perte récupérable : liens vers des pages poubelles (tags, /collections/all, /vendors) et liens externes éditoriaux. ${ok?'Rien d\'urgent.':'Nofollow ou dé-maillage des pages ci-dessous.'} <i>Le vrai levier de maillage, c'est la fermeture de cocon (onglet Architecte), pas la chasse au footer.</i></div></div></div>`;
+ if(Object.keys(d.pr_leak.classes||{}).length){const mx=Math.max(...Object.values(d.pr_leak.classes),1);h+=`<div class="card span-12"><div class="bars">`+Object.entries(d.pr_leak.classes).map(([k,v])=>`<div><div class="bar__top"><span class="bar__name">${k=='INTERNE_POUBELLE'?'Liens vers pages poubelles (tags, /all…)':k=='EXTERNE_DOFOLLOW'?'Liens externes éditoriaux (jus qui sort)':k}</span><span class="bar__val"><span class="bar__num" style="color:${ok?'var(--ok)':'var(--warn)'}">${v}</span></span></div><div class="bar__track"><div class="bar__fill" style="width:${v/mx*100}%;background:${ok?'var(--ok)':'var(--warn)'}"></div></div></div>`).join('')+`</div></div>`;}
+ if((d.pr_leak.top||[]).length)h+=`<div class="card card--flush span-12"><div class="card__head"><div class="card__title">Pages qui saignent le plus</div></div><div class="table-wrap"><table class="tbl stack"><thead><tr><th>Page</th><th class="n">PR</th><th class="n">Liens poubelle</th><th>Type</th></tr></thead><tbody>`+d.pr_leak.top.map(x=>`<tr><td class="lead" data-l="Page">${x.title}</td><td class="n" data-l="PR">${x.pr}</td><td class="n" data-l="Liens">${x.sinks}/${x.links}</td><td data-l="Type">${(x.classes||[]).join(', ')}</td></tr>`).join('')+`</tbody></table></div></div>`;
+ h+=`<div class="lede" style="margin-top:6px">Pour fermer tes cocons (relier les satellites à leurs piliers), va dans l'onglet <b>Santé des silos</b> — c'est là que vit le maillage.</div>`;
+ return h;
+}
+function renderGloss(){return `<div class="span-12">`+GLOSS.map(([t,q,w])=>`<div class="glo"><h3>${t}</h3><div class="q">${q}</div><div class="w">${w}</div></div>`).join('')+`</div>`;}
+
+/* ===================== PLOMBERIE UI ===================== */
+function wirePlumbing(){
+ document.querySelectorAll('.nav__item').forEach(n=>{n.setAttribute('tabindex','0');n.setAttribute('role','button');});
+ document.getElementById('nav').addEventListener('click',e=>{const it=e.target.closest('.nav__item');if(it&&it.dataset.tab){setTab(it.dataset.tab);}});
+ document.getElementById('nav').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const it=e.target.closest('.nav__item');if(it&&it.dataset.tab){e.preventDefault();setTab(it.dataset.tab);}}});
+ const sb=document.getElementById('storeBtn');sb.addEventListener('click',e=>{e.stopPropagation();toggleStoreMenu();});
+ document.addEventListener('click',e=>{if(!e.target.closest('.rail__pos'))closeStoreMenu();});
+ document.getElementById('burger').addEventListener('click',()=>{document.getElementById('rail').classList.toggle('is-open');document.getElementById('scrim').classList.toggle('is-open');});
+ document.getElementById('scrim').addEventListener('click',()=>{const ov=document.getElementById('siloOverlay');if(ov&&!ov.hidden){closeSiloPlan();}else{closeRail();closeStoreMenu();}});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'){const ov=document.getElementById('siloOverlay');if(ov&&!ov.hidden)closeSiloPlan();else{closeStoreMenu();closeRail();}}});
+ document.querySelectorAll('#densityToggle button').forEach(b=>b.addEventListener('click',()=>setDensity(b.dataset.density)));
+ const main=document.getElementById('main');window.addEventListener('scroll',()=>{document.getElementById('topbar').classList.toggle('is-scrolled',window.scrollY>4);},{passive:true});
+}
+function toggleStoreMenu(){const m=document.getElementById('storeMenu'),btn=document.getElementById('storeBtn');const open=m.hidden;m.hidden=!open;btn.setAttribute('aria-expanded',open?'true':'false');}
+function closeStoreMenu(){const m=document.getElementById('storeMenu');if(m){m.hidden=true;document.getElementById('storeBtn').setAttribute('aria-expanded','false');}}
+function closeRail(){document.getElementById('rail').classList.remove('is-open');document.getElementById('scrim').classList.remove('is-open');}
+function setDensity(d){document.getElementById('app').classList.toggle('dense',d=='compact');localStorage.setItem('tm_density',d);document.querySelectorAll('#densityToggle button').forEach(b=>b.classList.toggle('is-active',b.dataset.density===d));}
+function applyDensity(){setDensity(localStorage.getItem('tm_density')||'comfort');}
+
+init();
+
+</script></body></html>
