@@ -424,6 +424,7 @@ h1,h2,h3{font-weight:var(--fw-m);letter-spacing:var(--ls-tight);color:var(--tx);
       <a class="nav__item" data-tab="map"><i>⌗</i> Santé des silos<span class="nav__badge" id="badgeSilos" hidden>0</span></a>
       <div class="nav__group">Diagnostic</div>
       <a class="nav__item" data-tab="gsc"><i>◐</i> Actions Google</a>
+      <a class="nav__item" data-tab="qmine"><i>◆</i> Opportunités GSC</a>
       <a class="nav__item" data-tab="silogap"><i>＋</i> Articles manquants<span class="nav__badge" id="badgeSilogap" hidden>0</span></a>
       <a class="nav__item" data-tab="battle"><i>⚑</i> Ordre de bataille</a>
       <a class="nav__item" data-tab="pr"><i>⤳</i> Fuites de jus</a>
@@ -480,6 +481,7 @@ const TABMETA={
  collections:['Le catalogue','Collections les plus puissantes','Tes pages qui vendent, classées par liens éditoriaux reçus. Une collection orpheline (0 lien) est quasi invisible.'],
  map:['La structure','Santé des silos','Chaque carte = un silo de ton site (un thème). L\'aiguille te dit s\'il est <b>bien maillé</b> (vert) ou s\'il <b>fuit du jus</b> (rouge), et la liste rouge te donne EXACTEMENT les articles à relier au pilier. Les silos malades sont remontés en haut : attaque-les dans l\'ordre. Clique « plan de correction » pour la to-do précise.'],
  gsc:['Search Console','Actions Google','Ce que Google fait vraiment avec toi : mots-clés à pousser, titres à réécrire, pages qui se gênent. Données réelles sur 90 jours.'],
+ qmine:['Le minage GSC','Opportunités GSC','Le filon caché de ta Search Console. 💎 <b>Hidden gems</b> = grosses requêtes coincées en page 3-4 sur une page qui ranke DÉJÀ → un coup de pouce = page 1. ⚡ <b>Striking</b> = à un cheveu du top 3. 🔴 <b>Fuites CTR</b> = bien classé mais titre à réécrire (5 min). ❓ <b>Questions</b> = sujets à couvrir.'],
  silogap:['La couverture','Articles manquants','Les sous-sujets qu\'un site expert devrait couvrir et que tu n\'as pas encore. Chaque trou = un sujet où Google ne peut pas te classer.'],
  battle:['La priorisation','Ordre de bataille','Toutes les actions fusionnées et classées par priorité et effort. La colonne "Quoi faire" donne l\'action exacte.'],
  pr:['La plomberie','Fuites de jus','Un simple voyant : la nav normale (panier, légal, suivi) n\'est PAS comptée. On ne traque que le vrai jus gaspillé (tags, /all, liens externes).'],
@@ -556,7 +558,7 @@ function setTab(t){
 
 /* ===================== RENDER ===================== */
 function render(){const d=DATA,panel=document.getElementById('panel');if(!d||!d.summary){panel.innerHTML=empty('Données indisponibles pour cette boutique.');return;}
- const R={overview:renderOverview,ta:renderTA,archi:renderArchi,pages:renderPages,collections:renderCollections,gsc:renderGSC,silogap:renderSilogap,battle:renderBattle,pr:renderPR,glossaire:renderGloss};
+ const R={overview:renderOverview,ta:renderTA,archi:renderArchi,pages:renderPages,collections:renderCollections,gsc:renderGSC,qmine:renderQMine,silogap:renderSilogap,battle:renderBattle,pr:renderPR,glossaire:renderGloss};
  if(TAB=='map'){panel.innerHTML=renderSilos(d);}
  else if(TAB=='methodo')panel.innerHTML=METHODO;
  else panel.innerHTML=(R[TAB]||(()=>empty('—')))(d);
@@ -671,6 +673,17 @@ function openSiloPlan(idx){
   ov.hidden=false;document.getElementById('scrim').classList.add('is-open');const cb=ov.querySelector('.silo-overlay__close');if(cb)cb.focus();
 }
 function closeSiloPlan(){const ov=document.getElementById('siloOverlay');if(ov)ov.hidden=true;document.getElementById('scrim').classList.remove('is-open');}
+let QMSUB='hidden_gems';
+function renderQMine(d){if(!d.query_mine)return empty('Le minage GSC n\'a pas encore été calculé pour cette boutique — il apparaîtra après le prochain audit (engine.py --audit).');
+ const q=d.query_mine;
+ const subs=[['hidden_gems','💎 Hidden gems'],['striking_distance','⚡ Striking'],['page2','📦 Page 2'],['ctr_leaks','🔴 Fuites CTR'],['questions','❓ Questions'],['zero_click','🚫 Zéro clic']];
+ const HELP={hidden_gems:'Grosses impressions coincées en page 3-4 sur une page qui ranke déjà. Renforce ces pages (liens internes + contenu) → bascule en page 1. Le meilleur ROI caché.',striking_distance:'Positions 4-10 à fort volume. Un petit renfort = top 3, là où sont les clics.',page2:'Positions 11-20 : personne n\'y va. Un coup de pouce les fait passer en page 1.',ctr_leaks:'Bien classé mais peu cliqué : réécris le titre et la méta-description (5 min, gros gain).',questions:'Requêtes interrogatives = sujets People-Also-Ask à couvrir (FAQ, paragraphe dédié).',zero_click:'Vu mais jamais cliqué : SERP feature qui te coiffe, ou intention mal adressée.'};
+ if(!QMSUB||!q[QMSUB])QMSUB='hidden_gems';
+ let h=`<div class="span-12"><div class="gscbtn">`+subs.map(([k,l])=>`<button class="${k==QMSUB?'on':''}" onclick="QMSUB='${k}';render()">${l} <span class="mono">${(q[k]||[]).length}</span></button>`).join('')+`</div><div class="lede">${HELP[QMSUB]}</div>`;
+ const rows=q[QMSUB]||[];const isCtr=QMSUB=='ctr_leaks';
+ h+=`<div class="card card--flush"><div class="table-wrap"><table class="tbl stack"><thead><tr><th>Mot-clé</th><th class="n">Pos.</th><th class="n">Impr.</th><th class="n">Clics</th><th class="n">CTR</th>${isCtr?'<th class="n col-opt">CTR attendu</th>':''}<th class="col-opt">Page</th></tr></thead><tbody>`+(rows.length?rows.map(x=>`<tr><td class="lead" data-l="Mot-clé">${x.q}</td><td class="n" data-l="Pos.">${x.pos}</td><td class="n" data-l="Impr.">${(x.impr||0).toLocaleString()}</td><td class="n" data-l="Clics">${x.clicks}</td><td class="n" data-l="CTR">${x.ctr}%</td>${isCtr?`<td class="n col-opt" data-l="CTR att.">${x.ctr_attendu}%</td>`:''}<td class="mono col-opt" data-l="Page">${(x.page||'').slice(0,40)}</td></tr>`).join(''):`<tr><td colspan="7" style="text-align:center;color:var(--tx-3);padding:18px">Rien dans cette catégorie.</td></tr>`)+`</tbody></table></div></div></div>`;
+ return h;
+}
 function renderGSC(d){if(!d.ctr_leaks)return empty('Pas de données Google Search Console pour cette boutique.');
  const subs=[['ctr_leaks','Bien placé, peu cliqué'],['striking','À un cheveu du top 3'],['quick_wins','Coincé en page 2'],['cannib','Pages qui se gênent']];
  const HELP={ctr_leaks:'Bien classé mais peu de clics → réécris le titre/la description (5 min).',striking:'En page 1 (positions 4-10). Renforce ces pages pour viser le top 3.',quick_wins:'Coincé en page 2 (positions 11-20). Un coup de pouce les bascule en page 1.',cannib:'Plusieurs pages se battent pour le même mot-clé. Fusionne ou différencie.'};
