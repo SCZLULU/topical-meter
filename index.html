@@ -177,6 +177,29 @@ h1,h2,h3{font-weight:var(--fw-m);letter-spacing:var(--ls-tight);color:var(--tx);
 .seg.b-reference{flex:0 0 15%;background:var(--band-reference);color:#08291c}
 .bandscale .cursor{position:absolute;top:-2px;bottom:-2px;width:2px;background:#fff;box-shadow:0 0 6px #fff;z-index:2}
 
+/* 6b. PANNEAU POTENTIEL */
+.potpanel{background:linear-gradient(180deg,var(--bg-surface),var(--bg-inset));border:1px solid var(--bd-subtle);border-radius:var(--r-lg);padding:var(--s5);margin-bottom:var(--s4);box-shadow:var(--sh-1)}
+.potpanel__grid{display:grid;grid-template-columns:auto 1fr;gap:var(--s6);align-items:center}
+.potpanel__gauge{display:flex;flex-direction:column;align-items:center;gap:var(--s3)}
+.conf-chip{font-size:var(--fz-mc);color:var(--tx-2);background:var(--bg-inset);border:1px solid var(--cc);border-radius:999px;padding:3px 11px;white-space:nowrap}
+.conf-chip b{color:var(--cc)}
+.potpanel__title{font-size:var(--fz-h2);font-weight:var(--fw-sb);margin-bottom:6px}
+.potpanel__verdict{font-size:var(--fz-body);line-height:1.6;color:var(--tx-2);margin-bottom:var(--s4)}
+.potbars{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3) var(--s5)}
+.potbar__top{display:flex;justify-content:space-between;font-size:var(--fz-mc);color:var(--tx-2);margin-bottom:3px}
+.potbar__top b{font-variant-numeric:tabular-nums;color:var(--tx-1)}
+.potbar__track{height:7px;background:var(--bg-inset);border-radius:999px;overflow:hidden}
+.potbar__fill{height:100%;border-radius:999px;transition:width var(--t-slow)}
+.potbar__hint{font-size:10px;color:var(--tx-3);margin-top:3px;line-height:1.3}
+.potpanel__scale{margin-top:var(--s4)}
+.potrisk{margin-top:var(--s2)}
+.potrisk__h{font-size:var(--fz-sm);font-weight:var(--fw-m);color:var(--tx-2);margin-bottom:var(--s2)}
+.potrisk ul{list-style:none;margin:0;padding:0;display:grid;gap:var(--s2)}
+.potrisk li{background:var(--bg-inset);border-left:3px solid var(--accent,#ff9d00);border-radius:var(--r-sm);padding:8px 11px}
+.potrisk__t{display:block;font-weight:var(--fw-m);font-size:var(--fz-sm);color:var(--tx-1);margin-bottom:2px}
+.potrisk__m{display:block;font-size:var(--fz-mc);color:var(--tx-3);line-height:1.45}
+@media(max-width:680px){.potpanel__grid{grid-template-columns:1fr;text-align:center}.potbars{grid-template-columns:1fr}.potpanel__verdict{text-align:left}}
+
 /* 7. TUILES KPI */
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--s3)}
 .kpi{position:relative;overflow:hidden;background:var(--bg-surface);border:1px solid var(--bd-subtle);border-radius:var(--r-md);padding:14px 15px}
@@ -468,6 +491,26 @@ const BANDS=[[0,11,'Absent','#e8554e','absent'],[12,29,'Faible','#ff6b3d','faibl
 function band(v){let r=BANDS[0];for(const x of BANDS){if(v>=x[0])r=x;}return{nom:r[2],col:r[3],key:r[4]};}
 const STRBANDS=[[0,'Fragile','#e8554e'],[32,'En chantier','#ff9d00'],[48,'Correcte','#fcd000'],[64,'Bien bâtie','#57b87a'],[80,'Solide','#2f9e6e']];
 function structBand(v){let r=STRBANDS[0];for(const x of STRBANDS){if(v>=x[0])r=x;}return{nom:r[1],col:r[2]};}
+const POTBANDS=[[0,'Faible','#e8554e'],[18,'Modéré','#ff9d00'],[35,'Solide','#57b87a'],[55,'Élevé','#2f9e6e']];
+function potBand(v){let r=POTBANDS[0];for(const x of POTBANDS){if(v>=x[0])r=x;}return{nom:r[1],col:r[2]};}
+function potScale(score){const segs=[['#e8554e',18,'0–17','Faible','#3a0f0c'],['#ff9d00',17,'18–34','Modéré','#3d2500'],['#57b87a',20,'35–54','Solide','#0c3422'],['#2f9e6e',45,'55–100','Élevé','#08291c']];return `<div class="bandscale">`+segs.map(([bg,w,r,n,tc])=>`<div class="seg" style="flex:0 0 ${w}%;background:${bg};color:${tc}"><span class="rng">${r}</span><span class="nm">${n}</span></div>`).join('')+`<div class="cursor" style="left:${Math.max(0,Math.min(100,score))}%"></div></div>`;}
+const CONF_META={'élevée':['#2f9e6e','Élevée'],'moyenne':['#fcd000','Moyenne'],'faible':['#ff9d00','Faible']};
+function miniBar(label,val,col,hint){return `<div class="potbar"><div class="potbar__top"><span>${label}</span><b>${val}</b></div><div class="potbar__track"><div class="potbar__fill" style="width:${Math.max(0,Math.min(100,val))}%;background:${col}"></div></div>${hint?`<div class="potbar__hint">${hint}</div>`:''}</div>`;}
+function potentielPanel(p){if(!p)return'';const pb=potBand(p.score),cf=CONF_META[p.confiance]||['#888',p.confiance];
+ const bars=miniBar('Substance (profondeur × couverture)',p.substance,'#8b7bd8','l\'actif dur : lent à bâtir, impossible à truquer')
+  +miniBar('Construction on-site',p.construction,'#57b87a','substance + maillage + largeur des silos')
+  +miniBar('Demande estimée',p.demande,p.df_source=='gsc'?'#57b87a':'#ff9d00',p.df_source=='gsc'?'confortée par le GSC (des impressions existent)':'prior neutre — à confirmer en SERP')
+  +miniBar('Faisabilité estimée',p.faisabilite,p.df_source=='gsc'?'#57b87a':'#ff9d00',p.df_source=='gsc'?'confortée par le GSC (tu ranks déjà)':'prior neutre — à confirmer en SERP');
+ const risk=(p.risques||[]).map(r=>`<li><span class="potrisk__t">${r.titre}</span><span class="potrisk__m">${r.message}</span></li>`).join('');
+ return `<div class="span-12 potpanel"><div class="potpanel__grid">
+   <div class="potpanel__gauge">${gaugeBlock(p.score,pb.col,pb.nom,'Potentiel','probabilité d\'exploser')}
+     <div class="conf-chip" style="--cc:${cf[0]}" title="Niveau de preuve derrière la prédiction">Confiance&nbsp;: <b>${cf[1]}</b></div></div>
+   <div class="potpanel__body"><div class="potpanel__title">Score de Potentiel — <span style="color:${pb.col}">${pb.nom}</span></div>
+     <div class="potpanel__verdict">${p.verdict}</div>
+     <div class="potbars">${bars}</div></div></div>
+   <div class="potpanel__scale"><div class="scale-lbl">Échelle Potentiel</div>${potScale(p.score)}</div>
+   <div class="potrisk"><div class="potrisk__h">⚠️ Ce qui borne le score (à lever pour le faire monter)</div><ul>${risk}</ul></div>
+ </div>`;}
 function gaugeBlock(score,col,nom,title,sub){const r=56,c=2*Math.PI*r,off=c*(1-score/100);return `<div class="gauge"><svg width="142" height="142" viewBox="0 0 170 170"><circle class="gtrack" cx="85" cy="85" r="${r}" fill="none" stroke-width="13"/><circle class="gfill" cx="85" cy="85" r="${r}" fill="none" stroke="${col}" stroke-width="13" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 85 85)"/><text x="85" y="80" text-anchor="middle" font-size="38" font-weight="600" fill="${col}">${score}</text><text x="85" y="103" text-anchor="middle" font-size="11" fill="var(--tx-3)">/ 100</text></svg><div class="gauge__band" style="color:${col}">${nom}</div><div class="gauge__lbl">${title}</div><div class="gauge__sub">${sub}</div></div>`;}
 function bandKey(name){const m={'Absent':'absent','Faible':'faible','Émergent':'emergent','Crédible':'credible','Autorité':'autorite','Référence':'reference'};return m[name]||'info';}
 const VERDICTS={'Absent':'Google ne te considère pas comme une source sur ce sujet. Tu n\'apparais quasiment jamais.','Faible':'Présence marginale. Google te voit à peine ; il y a tout à construire.','Émergent':'Tu démarres. Google commence à te classer, mais te fait encore peu confiance.','Crédible':'Tu montes. Google te classe souvent en page 1 ; reste à transformer l\'essai en top 3.','Autorité':'Tu es une référence reconnue. Tu rankes haut, régulièrement, sur beaucoup de requêtes.','Référence':'Tu fais autorité. Google te traite comme LA source du sujet. Position dominante.'};
@@ -583,6 +626,8 @@ function renderOverview(d){let h='';
  }
  if(ta)h+=`<div class="span-12"><div class="scale-lbl">Échelle TA réalisée</div>${bandscale(ta.score)}</div>`;
  if(st)h+=`<div class="span-12"><div class="scale-lbl">Échelle Structure on-site</div>${structScale(st.score)}</div>`;
+ const pot=d.potentiel||(d.archi&&d.archi.potentiel);
+ if(pot)h+=potentielPanel(pot);
  let k=[];
  if(d.archi)k.push(['accent',(d.archi.synthese.a_renforcer||[]).length,'Silos à renforcer','déjà de la traction → à pousser']);
  if(d.archi)k.push(['info',(d.archi.silos_a_creer||[]).length,'Money pages sans silo','collections à soutenir éditorialement']);
